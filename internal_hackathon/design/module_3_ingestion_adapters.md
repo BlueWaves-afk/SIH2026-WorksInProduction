@@ -109,7 +109,7 @@ from this module's output chain, and always via M1's DB, never in-process.
     imd/          {mock.py, real.py, schemas.py, fixtures/}
     agmarknet/    {mock.py, real.py, schemas.py, fixtures/}
     agristack/    {mock.py, real.py, schemas.py, fixtures/}
-    bhashini/     {mock.py, real.py, schemas.py}          # no fixtures needed — wired live per masterspec §4.2
+    bhashini/     {mock.py, real.py, schemas.py, fixtures/} # cached/template fixtures; real path is stretch
     bhuvan/       {mock.py, real.py, schemas.py, fixtures/}  # static GeoJSON per masterspec §4.2
   replay/
     driver.py             # ReplayDriver.generate(scenario_id, day_offset) -> ReplayBundle
@@ -266,7 +266,7 @@ registry.get("imd")         -> SignalAdapter   # ADAPTER_MODE_IMD=mock|real
 registry.get("agmarknet")   -> SignalAdapter   # ADAPTER_MODE_AGMARKNET=mock|real
 registry.get("bhuvan")      -> SignalAdapter   # ADAPTER_MODE_BHUVAN=mock|real
 registry.get("agristack")   -> ProfileAdapter  # ADAPTER_MODE_AGRISTACK=mock|real
-registry.get("bhashini")    -> VoiceAdapter    # ADAPTER_MODE_BHASHINI=mock|real (real by default — masterspec §4.2 "Wire live")
+registry.get("bhashini")    -> VoiceAdapter    # ADAPTER_MODE_BHASHINI=mock|real (mock by default; real is stretch)
 ```
 
 ### 6.3 Replay driver (backs M1's `POST /api/v1/replay/scenario`)
@@ -288,7 +288,7 @@ triggers `M4 /risk-events/recalculate`. **M3 never touches the HTTP layer or the
 | IMD | `fixtures/90_day/imd_*.jsonl` | IMD public weather API |
 | Agmarknet/eNAM | `fixtures/90_day/agmarknet_*.jsonl` | data.gov.in Agmarknet API / eNAM API |
 | AgriStack | `fixtures/90_day/agristack_profiles.jsonl` | API Setu-mediated AgriStack Farmer/Crop Registry |
-| Bhashini | *(none — real by default)* | Bhashini ASR/TTS/translation APIs |
+| Bhashini | `fixtures/voice_templates/` and cached audio | Bhashini ASR/TTS/translation APIs (stretch) |
 | Bhuvan/OSM | `fixtures/90_day/bhuvan_villages.geojson` | Bhuvan tile/geocode API or OSM Nominatim |
 
 ---
@@ -463,11 +463,13 @@ Aligned to masterspecv1 §13.
 | IMD | Mock (district fixture, 90-day) | Real adapter coded and unit-tested against a recorded response, not demoed live |
 | Agmarknet/eNAM | Mock (price fixture, 90-day) | Same — Real path exists, not credentialed for the demo |
 | AgriStack | Mock + real consent screen (masterspecv1 §4.2: "Mock + consent screen") | Real API Setu pull if a sandbox credential becomes available |
-| Bhashini | **Real, wired live** — masterspecv1 §4.2/§7 names this the differentiator | Expand beyond Hindi/Marathi |
+| Bhashini | Mock/cached template adapter with the same interface | Real API, then expand beyond Hindi/Marathi |
 | Bhuvan/OSM | Static GeoJSON (masterspecv1 §4.2: "Static") | Live tile/geocode calls |
 
 **Build for MVP:** `AdapterInterface` family, all five Mock adapters, the 90-day fixture set, the
-5 replay scenarios + `ReplayDriver`, quality gate + TTL policy, Bhashini wired live.
+5 replay scenarios + `ReplayDriver`, quality gate + TTL policy, and cached/template voice fixtures.
+The Bhashini real adapter may be implemented behind the interface but must not be required for the
+judged replay.
 
 **Do not build (MVP):** live IMD/Agmarknet/AgriStack credentials in the demo path, multi-district
 fixture coverage, >2 languages in Bhashini, any adapter beyond the five named in masterspecv1 §6.
@@ -479,7 +481,7 @@ fixture coverage, >2 languages in Bhashini, any adapter beyond the five named in
 | Risk | Mitigation |
 |---|---|
 | Government APIs are dirty, rate-limited, or unavailable during the round | Adapter interface + 90-day replay fixtures — the whole point of masterspecv1 §6 and §18; demo never depends on a live credential |
-| Bhashini latency/quota threatens the "wire live" differentiator | Timeout budget + graceful fallback owned by M6 (cached/template TTS); M3 only needs to fail fast and report health honestly |
+| Bhashini latency/quota threatens a live voice stretch goal | Timeout budget + graceful fallback owned by M6 (cached/template TTS); M3 fails fast and reports health honestly |
 | AgriStack scope creep (fields beyond profile prefill) | `ProfilePrefill` schema is closed by design — no Aadhaar/bank/lender field exists to leak |
 | Fixture drift from real API shape (fixtures rot vs. actual gov schema) | `sources/<x>/schemas.py` models the *real* payload shape; fixtures are validated against that schema in CI, not hand-authored freeform JSON |
 | Replay scenarios silently diverge from masterspecv1 §12's five named scenarios | `replay/scenarios.py` names match masterspecv1 §12 literally (`normal`, `rainfall_shock`, `price_crash`, `due_window`, `stale_data`); tested by name |

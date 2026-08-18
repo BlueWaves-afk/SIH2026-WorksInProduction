@@ -343,7 +343,7 @@ Maps to `masterspecv1.md §14`.
 - Offline outbox + retry/backoff + dead-letter, tested with a forced-failure scenario in the demo.
 - Consent gate, daily cap, idempotency — all enforced even against the mock provider (so the guardrails are demonstrably real, not decorative).
 - Delivery status surfaced in both officer dashboard (case timeline) and farmer PWA ("your alert was sent").
-- Bhashini-backed **voice/IVR template TTS** (stretch differentiator, matches masterspecv1 §6/§7 "wire Bhashini live") — if time-boxed out, voice/IVR fall back to mock with pre-recorded audio.
+- Bhashini-backed **voice/IVR template TTS** (stretch differentiator) — if time-boxed out, voice/IVR fall back to mock with pre-recorded audio.
 
 **Do not build (MVP):**
 - Real Twilio/telecom SMS or PSTN voice integration — interface defined, class stubbed, not credentialed.

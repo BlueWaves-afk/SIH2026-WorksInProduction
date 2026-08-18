@@ -6,7 +6,13 @@ It detects when a farmer may need help early, explains *why* in their own langua
 - **Problem statement:** PS-02 — Smart Crop Advisory & Farmer Distress Early-Warning System
 - **Event:** Internal Hackathon 2026 (SIH-styled). Judging axes: Idea/Innovation · Technical Feasibility · Impact · Prototype/MVP Quality · Presentation.
 - **Deliverables:** Working prototype/MVP + SIH-style PPT + 3-min demo video.
-- **Version:** v1 · **Date:** 2026-08-18 · **Status:** initial detailed spec, pre-build.
+- **Version:** v1.1 · **Date:** 2026-08-19 · **Status:** planning baseline, pre-build.
+
+> **Provenance boundary:** This design is based on the institute-level source artifact
+> `internal_hackathon/SIH Problem Statements.docx`, which describes an internal hackathon modeled on
+> SIH. It is not evidence that PS-02 is the official national SIH 2026 PS. Before any external SIH
+> submission, the team must reconcile the title, wording, PS identifier, owner, and evaluation
+> requirements against the authenticated SIH SPOC portal and preserve that official version here.
 
 ---
 
@@ -96,7 +102,7 @@ Only **two** external sources feed the score — a small, auditable signal set i
 | **IMD** | Rainfall actual + forecast vs normal | Rainfall shock 0–35 | IMD public weather API | District fixture | Daily · 48h |
 | **Agmarknet / eNAM** | Daily modal prices + arrivals | Market stress 0–30 | data.gov.in Agmarknet / eNAM | Price fixture | Daily · 72h |
 | **AgriStack** | Farmer/crop/land prefill | *profile only* | Consented pull via API Setu | Mock + consent screen | On onboard |
-| **Bhashini** | ASR + TTS + translation (11+ langs) | *I/O layer* | Bhashini public APIs | **Wire live** (differentiator) | Per interaction |
+| **Bhashini** | ASR + TTS + translation (11+ langs) | *I/O layer* | Bhashini public APIs | Mock/cached prompts | Per interaction |
 | **Bhuvan / OSM** | Village + mandi coordinates | *map display* | Tiles / geocode | Static GeoJSON | Static |
 
 `repayment` and `farmer_report` sub-scores come **only** from farmer input — no external loan-bureau or credit API. That is the privacy firewall.
@@ -161,7 +167,7 @@ signal → AdapterInterface → { MockAdapter (fixtures) | RealAdapter (gov API)
 | Profile prefill | **AgriStack** (Farmer + Crop Registry, geo maps) | Consented identity/land/crop | Mock + consent screen | Token only; no Aadhaar/bank |
 | Rainfall signal | **IMD** | Rainfall-shock sub-score | Fixture | TTL → confidence |
 | Price signal + "nearer mandis" | **Agmarknet / eNAM** | Market-stress sub-score + comparison | Fixture | Source + date shown |
-| Voice + language | **Bhashini** | Voice UI + spoken explanations | Wire live | Translate templates only |
+| Voice + language | **Bhashini** | Voice UI + spoken explanations | Mock/cached templates | Translate templates only |
 | Scheme eligibility | **PM-Kisan / PMFBY / KCC** docs | RAG corpus | pgvector ingest | Cited, officer-verified |
 | Consented exchange bus | **API Setu** | Standard rails for the pulls above | Named in architecture | Role-based, auditable |
 | Complementary handoff | **Kisan e-Mitra / Bharat-VISTAAR** | Deep scheme Q&A + ICAR best practice | Optional handoff | Partner, not competitor |
@@ -174,8 +180,10 @@ signal → AdapterInterface → { MockAdapter (fixtures) | RealAdapter (gov API)
 
 Voice-first because the target user has low literacy, a basic Android phone, and often 2G.
 
-- **Engine:** Bhashini ASR + TTS + translation (start Hindi + Marathi). Cached/local fallback when offline.
-- **Reusable asset:** port the team's existing Gemini Live-style voice stack (VAD, barge-in, low-latency streaming) from prior work — the hard real-time plumbing already exists.
+- **Engine:** Bhashini ASR + TTS + translation (start Hindi + Marathi). The MVP uses cached or
+  pre-recorded template audio with the same adapter contract; live Bhashini is a stretch path.
+- **Reusable asset:** port the team's existing Gemini Live-style voice stack (VAD, barge-in, low-latency streaming)
+  only after the deterministic tap/text path is stable; real-time voice is not a demo dependency.
 - **Interaction spine:** every screen is operable **eyes-free** — tap anywhere → it speaks; a 🔊 "Hear this" button replays. Barge-in lets the farmer interrupt.
 - **Grounding rule:** the voice copilot *narrates* the deterministic score and the scheme RAG — it never invents the score, a diagnosis, or a dosage. Template-first, LLM-polish-second, agronomy-locked.
 
@@ -329,7 +337,8 @@ Because the round requires a polished 3-min video, invest in demo polish and sto
 
 - **Phase 1 — Foundations:** district/crops, schemas, consent, 90-day fixtures, adapter interfaces.
 - **Phase 2 — Signals & scoring:** IMD/Agmarknet mock adapters, quality/TTL flags, rules scorer, bands, explanations, unit tests.
-- **Phase 3 — Farmer app:** onboarding, status home, why-screen, action cards, offline cache, Bhashini voice.
+- **Phase 3 — Farmer app:** onboarding, status home, why-screen, action cards, offline cache, tap-to-hear/cached voice;
+  live Bhashini remains stretch.
 - **Phase 4 — Officer side:** case queue, map, case detail + actions, district strip, copilot brief.
 - **Phase 5 — Integration & safety:** replay scenarios (incl. stale-data), RBAC/audit, scheme RAG.
 - **Phase 6 — Story:** deck, 3-min video, rehearsal, Q&A prep (every member can answer).
@@ -359,7 +368,7 @@ Because the round requires a polished 3-min video, invest in demo polish and sto
 | DeHaat Kisan | Inputs + expert consult + satellite | Marketplace; farmer initiates; no early-warning |
 | Kisan Suvidha | Govt advisory + pest/weather alerts | Broadcast; not individualised; no case routing |
 | Kisan e-Mitra (Wadhwani AI) | Voice AI chatbot for PM-Kisan queries | A Q&A chatbot; no distress detection or officer routing |
-| AgriStack + RBI ULI | Registry + sub-30-min loans | The *credit-push* side — the opposite of "who needs support" |
+| AgriStack and related government rails | Registry/profile and consented service exchange | Integration surface only; never used to make lending, eligibility, or adverse decisions |
 
 **Whitespace the platform owns:** proactive, explainable, population-scale distress triage routed to a human officer — the "anticipatory support via early warning" the distress literature explicitly calls for and that no shipping product provides.
 

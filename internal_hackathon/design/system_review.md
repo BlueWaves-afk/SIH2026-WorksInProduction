@@ -17,6 +17,11 @@ design documents only: there is no application code, dependency manifest, migrat
 OpenAPI artifact, or executable test suite. The review therefore validates the written architecture
 and static consistency, not runtime correctness.
 
+The attached [`problem_statement_inventory.md`](../problem_statement_inventory.md) now records the
+seven internal statements and their provenance. PS-02 is the selected internal brief; its exact
+title/identifier/owner must still be reconciled against the authenticated SIH SPOC portal before a
+national submission.
+
 ## System reviewed
 
 | Area | Intended responsibility | Assessment |
@@ -57,6 +62,9 @@ The following inconsistencies were found across the documents and normalized bef
     provider no-training/no-retention controls are required, and templates are the fallback.
 12. **Repository hygiene:** `.env.*`, private-key material, and OS metadata are ignored while an
     example environment file remains committable.
+13. **MVP boundary:** live Bhashini is now consistently a stretch integration. The MVP uses the same
+    adapter contract with cached/template audio, so network, quota, and provider policy cannot break
+    the scored replay.
 
 ## Findings and implementation gates
 
@@ -70,6 +78,7 @@ The following inconsistencies were found across the documents and normalized bef
 | Farmer-session enforcement is only a design rule | A raw token in a URL is an account-enumeration/data-disclosure risk if implementation treats it as authorization. | Add integration tests proving token-only requests fail, sessions are short-lived/scoped, and export/delete require re-authentication. |
 | Action-card freshness is underspecified | A stale agronomy or scheme card can be harmful even when its wording is approved. | Add `version`, `effective_at`, `expires_at`, `crop/region`, `source_refs`, and approval/content hash; M6 must refuse expired cards. |
 | External LLM and voice providers create data-governance risk | Provider retention, training, logging, and cross-border processing may not match the consent promise. | Default external calls off; use template-only demo mode, approved provider terms, redacted payload tests, key rotation, spend limits, and an incident switch. |
+| Internal PS versus official SIH PS is not yet proven equivalent | A strong prototype can still be rejected if the national PS ID, owner, wording, or submission constraints differ. | SPOC exports the authenticated official record; reconcile it in a dated file before PPT submission or national nomination. |
 
 ### Medium priority — resolve before pilot
 
