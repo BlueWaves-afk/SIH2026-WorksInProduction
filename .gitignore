@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local environment, credentials, and OS files
+.env.*
+!.env.example
+.DS_Store
+*.pem
+*.key
+*.p12
