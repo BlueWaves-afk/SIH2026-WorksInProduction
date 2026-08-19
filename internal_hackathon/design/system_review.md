@@ -12,10 +12,11 @@ coarse repayment timing; and an explicit separation between AI assistance and th
 score. Those choices match the practical pattern that SIH judges tend to reward: a named user, a
 bounded government workflow, a working end-to-end slice, and measurable operational outcomes.
 
-The repository is **not implementation-ready without the gates below**. It currently contains
-design documents only: there is no application code, dependency manifest, migration, CI workflow,
-OpenAPI artifact, or executable test suite. The review therefore validates the written architecture
-and static consistency, not runtime correctness.
+The repository is **scaffold-ready, not production-ready**. The initial monorepo, package manifests,
+CI, frontend shells, shared Pydantic contracts, runnable FDI scoring engine, adapter core, replay
+fixtures, and smoke/acceptance tests now exist. Database migrations, live source adapters, durable
+outbox/workflow integration, and production auth still require the gates below. This review therefore
+validates the executable contract/replay slice and the written architecture, not field readiness.
 
 The attached [`problem_statement_inventory.md`](../problem_statement_inventory.md) now records the
 seven internal statements and their provenance. PS-02 is the selected internal brief; its exact
@@ -33,7 +34,7 @@ national submission.
 | M5 Case Workflow | Routing, case lifecycle, SLA, district aggregates | Good human-in-the-loop loop; event-to-case delivery needs durable integration. |
 | M6 Delivery | Action cards, channels, outbox, retries, receipts | Good safety controls; provider secrets and exactly-once/idempotent behavior need implementation tests. |
 | M7 AI Copilot | Cited scheme retrieval, officer draft, optional voice narration | Appropriate as an edge/stretch layer; external-model governance must be a hard gate. |
-| M8 Frontends | Farmer PWA, officer dashboard, shared components, offline UX | Strong demo story; generated API types and session handling must precede UI work. |
+| M8 Frontends | Farmer PWA, officer dashboard, shared components, offline UX | Runnable shells and workspace tests exist; generated API types and session handling still precede UI work. |
 
 ## Corrections applied in this review
 
@@ -72,7 +73,7 @@ The following inconsistencies were found across the documents and normalized bef
 
 | Finding | Why it matters | Required gate |
 |---|---|---|
-| No executable system exists yet | The documents describe tests, but none can pass until code, migrations, fixtures, and CI exist. | Create a minimal monorepo and make the replay vertical slice green before adding stretch integrations. |
+| No full application exists yet | The replay slice is executable, but persistence, auth, workflow, and provider boundaries are still scaffolds. | Keep the deterministic replay vertical slice green while implementing transactional M1→M5→M6 handoff. |
 | Event side effects are described synchronously | A request can persist a score while case creation or notification fails, or duplicate them on retry. | Persist `RiskEvent` and an outbox record transactionally; use idempotency keys on ingestion/replay and idempotent M5/M6 consumers. |
 | Storage consent semantics are not fully decided | “Storage off” conflicts with the need to show a current status and maintain a safety/audit trail. | Decide whether enrollment requires storage consent or supports an explicitly ephemeral mode; encode it in M2, API responses, retention jobs, and UI copy. |
 | Farmer-session enforcement is only a design rule | A raw token in a URL is an account-enumeration/data-disclosure risk if implementation treats it as authorization. | Add integration tests proving token-only requests fail, sessions are short-lived/scoped, and export/delete require re-authentication. |
@@ -140,17 +141,23 @@ and [Supabase database extensions](https://supabase.com/docs/guides/database/ext
 
 ## Verification performed
 
-- Confirmed all eight module specs are present and follow the 14-section template.
+- Confirmed the M0–M9 architecture/spec documents are present; the implementation scaffold maps to
+  the same module boundaries.
 - Checked shared-contract names and the corrected role, phone, consent, case, and copilot fields.
 - Checked that the reviewed reference URLs in the master spec respond successfully.
 - Checked scoring boundary prose and the M5 privacy threshold after correction.
-- Ran whitespace/error checks with Git before staging.
-- Confirmed no application source, dependency lockfile, migration, environment file, private key, or
-  test suite exists yet; runtime tests are therefore intentionally reported as **not run**.
+- Ran `make -C internal_hackathon PYTHON=.venv/bin/python lint` successfully (Ruff + TypeScript checks).
+- Ran `make -C internal_hackathon PYTHON=.venv/bin/python test` successfully (12 Python tests + 3
+  frontend workspace smoke tests).
+- Ran `npm --prefix internal_hackathon run build` successfully for both Vite applications.
+- Confirmed the committed `.env.example` contains placeholders only; local `.venv`, `node_modules`,
+  and build output are ignored.
+- Remaining runtime gaps are explicit: source-specific Mock/Real adapters, ORM/migrations, M2
+  session enforcement, M5/M6 durable handoff, and M7 implementation.
 
 ## Go/no-go decision
 
-**Go for implementation and internal judging preparation.** Do not claim production readiness or field
-impact yet. The minimum go/no-go milestone is a deterministic replay that passes the master acceptance
-tests with session enforcement, consent audit, transactional event handoff, and an honest offline
-failure path.
+**Go for parallel implementation and internal judging preparation.** Do not claim production readiness
+or field impact yet. The current minimum milestone is a deterministic replay that passes the acceptance
+tests; the next go/no-go gate adds session enforcement, consent audit, transactional event handoff,
+and an honest offline failure path before any live pilot or national submission claim.

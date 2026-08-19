@@ -137,8 +137,8 @@ AlertCase (M5-owned columns, superset of canonical)
   confidence           float                          # denormalised from RiskEvent at creation
   assigned_officer_id  fk -> officer (nullable = routing miss)
   status               enum (see §6 state machine)     # canonical `status`
-  recipient_role       enum(officer, district_admin)   # canonical
-  channel_preferences  enum[] (pwa, sms, voice, ivr)  # delivery preference; M6 owns actual attempts
+  recipient_role       enum(extension_officer, district_admin)   # canonical
+  channel_preferences  enum[] (push, sms, voice, ivr, whatsapp)  # delivery preference; M6 owns actual attempts
   created_at           timestamp
   sla_ack_due_at        timestamp                        # created_at + SLA target (§6.3)
   sla_breached          bool, default false
@@ -185,7 +185,7 @@ Append-only rule: `case_status_history` rows are **never updated or deleted** �
 
 | Endpoint | Method | Purpose | Auth (via M2) |
 |---|---|---|---|
-| `/api/v1/cases` | GET | Ranked queue; filters `district_id`, `officer_id`, `band`, `status` | officer/district_admin, scoped to assigned district/villages |
+| `/api/v1/cases` | GET | Ranked queue; filters `district_id`, `officer_id`, `band`, `status` | extension_officer/district_admin, scoped to assigned district/villages |
 | `/api/v1/cases/{case_id}` | GET | Case detail + status history + `RiskEvent.contributors[]` (referenced, not recomputed) | scoped |
 | `/api/v1/cases/{case_id}/acknowledge` | POST | New → Acknowledged | officer assigned to case |
 | `/api/v1/cases/{case_id}/visit` | POST | Acknowledged → Visited (`visit_notes`) | officer assigned to case |

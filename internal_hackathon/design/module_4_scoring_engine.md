@@ -8,11 +8,27 @@ first — this spec conforms to both and does not redefine any contract owned by
 > of M2 (`identity-consent`) or M3 (`adapters`) runtime code. It imports only *type definitions* from M1.
 > Same inputs → same outputs, always. This is what makes "the score is not a model" defensible.
 
+> **Amendment (signal model v2 — FDI alignment).** This module now implements the FDI-aligned
+> model in [`signal_model_fdi_aligned.md`](./signal_model_fdi_aligned.md). Changes:
+>
+> - **Structure:** `final_score = clamp(shock_score x vulnerability_multiplier, 0, 100)` —
+>   acute signals produce the shock score (0-100); structural signals produce a 0.7-1.3 multiplier.
+> - **Signals:** 5 -> **15**, mapped to CRIDA's 7 dimensions. New rule modules:
+>   `rules/satellite_stress.py` (S3), `rules/pest_pressure.py` (S4), `rules/vulnerability.py`
+>   (S6-S12), `rules/engagement_flag.py` (S15, non-scoring).
+> - **Bands:** now **Green <50 / Amber 50-69 / Red >=70**, aligned to CRIDA's 0.5 / 0.7 cutoffs.
+>   Our Red *is* CRIDA's "severe distress" band. `constants.py` is updated accordingly.
+> - **D7 (socio-psychological) is NOT scored** (`D7_IS_SCORED = False`). S15 is an officer-side
+>   context flag only, never a number, never shown to the farmer.
+> - **Public contract unchanged:** `compute_risk_event()` still returns a `RiskEvent`, so M5/M6/M7/M8
+>   need no changes. The purity rule (no I/O) still holds.
+
 ---
 
 ## 1. Module purpose & responsibilities
 
-- Compute a 0–100 **support-priority score** from up to five weighted sub-scores.
+- Compute a 0–100 **support-priority score** from seven acute shock signals and a bounded structural
+  vulnerability multiplier; S15 is an officer-only context flag.
 - Assign a **band** (Green/Amber/Red) with two-observation/three-day **hysteresis** to prevent flapping.
 - Compute a **confidence** value from data freshness + completeness.
 - Select and render the **top-3 human-readable drivers**, each traceable to a rule + source.
@@ -28,7 +44,8 @@ first — this spec conforms to both and does not redefine any contract owned by
 ## 2. Scope
 
 ### In scope
-- The five sub-score rule functions (rainfall, price, repayment, crop/soil, farmer-reported).
+- The seven shock rule functions (S1–S5, S13–S14), seven vulnerability adjustments (S6–S12),
+  and non-scoring engagement flag (S15).
 - Band assignment + hysteresis state machine.
 - Confidence computation (freshness × completeness, weight-normalised).
 - Driver selection/rendering (top-3, human-readable, rule+source traceable).
@@ -79,17 +96,20 @@ services/scoring-engine/
   scoring_engine/
     __init__.py
     constants.py        # weights, band cutoffs, TTL defaults, MODEL_VERSION, SCORE_DISCLAIMER
-    types.py             # SubScoreResult, Contributor, FarmerContext, ScoreContext, BandDecision (local types)
+    types.py             # SubScoreResult, Contributor, FarmerContext, BandDecision (local types)
     guardrails.py         # banned-field scan, disclaimer export, purity assertions
     confidence.py          # freshness() + completeness() + weighted aggregate
     drivers.py              # driver text templates + top-3 selection
     bands.py                 # band_from_score() + BandHysteresis state machine
     rules/
-      rainfall.py             # score_rainfall_shock()
-      price.py                 # score_price_stress()
-      repayment.py              # score_repayment_window()
-      crop_soil.py               # score_crop_soil_vulnerability()
-      farmer_report.py            # score_farmer_reported_shock()
+      rainfall.py             # S1 deficit + S2 excess
+      satellite_stress.py     # S3 Sentinel-2 anomaly
+      pest_pressure.py        # S4 bounded pest/advisory signal
+      repayment.py            # S5 opt-in due window
+      vulnerability.py        # S6-S12 multiplier adjustments
+      price.py                # S13 market shock + below-MSP
+      farmer_report.py        # S14 acute farmer-reported shock
+      engagement_flag.py      # S15 officer context only (never scored)
     engine.py                     # compute_risk_event() — the single public entrypoint
     shadow/
       __init__.py
@@ -100,7 +120,7 @@ services/scoring-engine/
     test_rainfall.py
     test_price.py
     test_repayment.py
-    test_crop_soil.py
+    test_vulnerability.py
     test_farmer_report.py
     test_bands_hysteresis.py
     test_confidence.py
@@ -112,37 +132,53 @@ services/scoring-engine/
 
 ### Rule tables (MVP calibration placeholders — see §14 open questions)
 
-**Rainfall shock (0–35)** — `metric="rainfall_deviation_pct"`, source IMD.
+> ⚠️ **Rescaled by signal model v2.** Rainfall now splits into **S1 deficit (0–20)** and
+> **S2 excess/flood (0–10)**, and `irrigation_type` moves *out* of this rule into the
+> **vulnerability multiplier (S9)**. Authoritative weights:
+> [`signal_model_fdi_aligned.md`](./signal_model_fdi_aligned.md).
 
-| Cumulative deviation from normal | Base points (rainfed, multiplier 1.0) |
+**S1 rainfall deficit (0–20)** — `metric="rainfall_deviation_pct"`, source IMD.
+
+| Cumulative deviation from normal | Points |
 |---|---:|
 | ≥ 0% (normal/surplus) | 0 |
-| (−10%, 0%) | 5 |
-| (−20%, −10%] | 15 |
-| (−30%, −20%] | 25 |
-| ≤ −30% (severe drought) | 35 |
-| ≥ +40% (flood risk) | 20 (distinct `flood_risk` driver text) |
+| (−10%, 0%) | 3 |
+| (−20%, −10%] | 9 |
+| (−30%, −20%] | 14 |
+| ≤ −30% (severe drought) | 20 |
 
-Intervals are half-open and evaluated from most severe to least severe; the exact boundary belongs
-to the more severe row (for example, `−10%` scores 15, while `−9.99%` scores 5). Values between
-`−0%` and `0%` are normalized to zero. The positive flood-risk rule is evaluated independently.
+**S2 rainfall excess / flood (0–10)** — distinct `flood_risk` driver text.
 
-Irrigation modulation (applied after base lookup): `rainfed × 1.0`, `irrigated × 0.4` (irrigation absorbs
-most of the rainfall shock but not all — irrigation infrastructure itself can fail).
+| Cumulative deviation from normal | Points |
+|---|---:|
+| < +40% | 0 |
+| [+40%, +50%) | 5 |
+| ≥ +50% (flood risk) | 10 |
 
-**Mandi price stress (0–30)** — `metric="mandi_price_deviation_pct"`, source Agmarknet/eNAM, vs. crop's
-trailing 30-day normal modal price.
+Intervals are evaluated from most severe to least severe; exact boundaries belong to the more severe
+row (for example, `−10%` scores 9, while `−9.99%` scores 3). Irrigation is intentionally not a
+rainfall modifier; it is scored once as vulnerability signal S9.
+
+**S3 satellite crop stress (0–15)** — `ndvi_anomaly_pct`/`ndwi_anomaly_pct`, Sentinel-2. The MVP
+uses a bounded anomaly score and reports `unknown` when the source is absent or stale; it never
+claims a disease diagnosis from imagery alone.
+
+**S4 pest/disease pressure (0–8)** — a bounded advisory or farmer-report signal. It is a decision
+support input, not a pesticide prescription.
+
+**S13 market price shock (0–20)** — `metric="mandi_price_deviation_pct"`, source Agmarknet/eNAM,
+versus the 90-day seasonal median, with a static government MSP reference flag.
 
 | Deviation from normal | Points |
 |---|---:|
 | ≥ 0% | 0 |
-| (−10%, 0%) | 8 |
-| (−20%, −10%] | 18 |
-| (−30%, −20%] | 26 |
-| ≤ −30% | 30 |
+| (−10%, 0%) | 4 |
+| (−20%, −10%] | 9 |
+| (−30%, −20%] | 14 |
+| ≤ −30% | 20 |
 
-The price intervals use the same half-open convention as rainfall: `−10%` belongs to the 18-point
-row, `−20%` to 26 points, and `−30%` to 30 points. Boundary cases are mandatory fixtures.
+An observation at or below MSP receives at least the minimum price-shock points. Boundary cases are
+mandatory fixtures.
 
 **Repayment window (0–20)** — opt-in only. Absent entirely (no `due_window` observation, or
 `consent.due_window == False`) ⇒ sub-score **omitted from `contributors[]`**, not scored as zero-with-a-driver.
@@ -156,41 +192,29 @@ row, `−20%` to 26 points, and `−30%` to 30 points. Boundary cases are mandat
 
 Amount-band modulation: `low ×0.7`, `medium ×1.0`, `high ×1.15`, result clamped to `[0, 20]`.
 
-**Crop/soil vulnerability (0–10)** — illustrative MVP crops `cotton`, `soybean` (confirm with product —
-see §14).
+**S6–S12 vulnerability multiplier (0.7–1.3)** — apply the adjustments in
+`signal_model_fdi_aligned.md` exactly once, then clamp `1.0 + sum(adjustments)` to `[0.7, 1.3]`.
+This includes scheme coverage, institutional access, land holding, irrigation, growth stage,
+diversification and soil retention. These signals are explainability context, not shock points.
 
-| Days since sowing | Points |
-|---|---:|
-| 0–20 (germination) | 6 |
-| 21–60 (flowering/vegetative — most sensitive) | 10 |
-| 61–90 (maturation) | 5 |
-| > 90 (near-harvest) | 2 |
-
-Crop sensitivity multiplier: `cotton ×1.0`, `soybean ×0.8`. Optional `soil_context.poor_soil == True`
-adds a flat `+1`, result clamped to `[0, 10]`.
-
-**Farmer-reported shock (0–5)** — `metric="farmer_report"`, enum `{pest_seen, no_buyer, crop_damaged, other}`,
-7-day lookback.
-
-| Distinct events in window | Points |
-|---|---:|
-| 0 | 0 |
-| 1 | 3 |
-| ≥ 2 | 5 |
+**S14 acute farmer-reported shock (0–7)** — `metric="acute_farmer_report"` or `farmer_report`,
+with the bounded intents `health_expense`, `livestock_death`, `no_buyer`, `crop_damaged`, and
+`request_callback`.
 
 ### Constants (`constants.py`)
 
 ```python
-MODEL_VERSION: Final[str] = "rules-v1.0.0"          # semver; bump on any rule-table change
+MODEL_VERSION: Final[str] = "rules-fdi-0.2.0"       # bump on any rule-table or signal change
 SCORE_DISCLAIMER: Final[str] = (
     "This is not a credit, loan-default, or insurance score."
 )
 BAND_CUTOFFS: Final[dict[str, tuple[int, int]]] = {
-    "green": (0, 29), "amber": (30, 59), "red": (60, 100),
+    "green": (0, 49), "amber": (50, 69), "red": (70, 100),
 }
-WEIGHTS: Final[dict[str, int]] = {
-    "rainfall": 35, "price": 30, "repayment": 20, "crop_soil": 10, "farmer_report": 5,
+SHOCK_WEIGHTS: Final[dict[str, int]] = {
+    "S1": 20, "S2": 10, "S3": 15, "S4": 8, "S5": 20, "S13": 20, "S14": 7,
 }
+VULNERABILITY_MULTIPLIER: Final[tuple[float, float]] = (0.7, 1.3)
 HYSTERESIS_MIN_OBSERVATIONS: Final[int] = 2
 HYSTERESIS_MIN_SPAN_DAYS: Final[int] = 3
 DEFAULT_EXPIRY_HOURS: Final[int] = 48
@@ -206,10 +230,10 @@ STALE_FRESHNESS_FLOOR: Final[float] = 0.3   # below this, domain is "stale" for 
 ```python
 @dataclass(frozen=True)
 class SubScoreResult:
-    domain: str                 # "rainfall" | "price" | "repayment" | "crop_soil" | "farmer_report"
-    value: float                # 0..max_value
-    max_value: float
-    applicable: bool            # False for repayment when not opted in
+    signal: str                 # S1..S14; S15 is never a SubScoreResult
+    points: float               # 0..max_points
+    max_points: float
+    applicable: bool            # False when a source/opt-in is absent
     stale: bool
     freshness: float            # 0..1
     rule_id: str                # e.g. "rainfall.deficit.severe"
@@ -219,15 +243,12 @@ class SubScoreResult:
 
 @dataclass(frozen=True)
 class Contributor:              # <-- proposed concrete shape for RiskEvent.contributors[]
-    rule_id: str
-    label: str
-    sub_score: float
-    max_sub_score: float
-    weight_pct: float
+    signal: str
+    points: float
+    max_points: float
+    explanation: str
     source: str
-    observed_at: datetime | None
-    confidence: float
-    driver_text: str
+    observed_at: datetime
 
 @dataclass(frozen=True)
 class FarmerContext:            # narrowed, read-only view of M1's FarmerProfile
@@ -235,13 +256,12 @@ class FarmerContext:            # narrowed, read-only view of M1's FarmerProfile
     village_id: str
     crop: str
     sowing_date: date
-    irrigation_type: Literal["rainfed", "irrigated"]
-    area_band: str | None = None
-    soil_context: "SoilContext | None" = None
-
-@dataclass(frozen=True)
-class SoilContext:
-    poor_soil: bool = False
+    irrigation_type: Literal["rainfed", "partial", "assured"]
+    area_band: Literal["<1", "1-2", ">2"] | None = None
+    secondary_crop: str | None = None
+    schemes_enrolled: list[str] = field(default_factory=list)
+    institutional_access: Literal["good", "limited", "unknown"] = "unknown"
+    soil_retention: Literal["poor", "medium", "good", "unknown"] = "unknown"
 
 @dataclass(frozen=True)
 class BandDecision:
@@ -261,15 +281,16 @@ class BandDecision:
 ```python
 Observation   { source, observed_at, village_id|plot_grid, metric, value: JsonValue, unit, quality, ttl }
 RiskEvent     { event_id, farmer_token, village_id, score, band, confidence,
-                contributors[], action_ids[], model_version, expires_at }
+                contributors[], action_ids[], model_version, evaluated_at, expires_at, context_flags[] }
 ConsentContext{ farmer_token, storage, contact, analytics, due_window, consent_scopes[] }
-FarmerProfile { farmer_token, village_id, locale, crop, sowing_date,
-                irrigation_type, area_band, consent_flags }
+FarmerProfile { farmer_token, village_id, locale, crop, sowing_date, irrigation_type,
+                area_band, secondary_crop, schemes_enrolled, consent_flags }
 ```
 
-`Observation.metric` values M4 recognises: `rainfall_deviation_pct`, `mandi_price_deviation_pct`,
-`due_window` (value is the `{due_date_band, amount_band}` shape, `source="farmer_opt_in"`),
-`farmer_report` (value is the enum event).
+`Observation.metric` values M4 recognises: `rainfall_deviation_pct`, `ndvi_anomaly_pct`,
+`ndwi_anomaly_pct`, `pest_pressure`, `mandi_price_deviation_pct`, `due_window` (value is the
+`{days_to_due, amount_band}` shape, `source="farmer_opt_in"`), `acute_farmer_report` and
+`farmer_report`.
 
 ---
 
@@ -284,16 +305,18 @@ def compute_risk_event(
     farmer: FarmerContext,
     observations: list[Observation],
     consent: ConsentContext,
-    prior_events: list[RiskEvent],       # most-recent-first, caller supplies >= last 3 days of history
-    as_of: datetime,
+    prior_events: list[RiskEvent] | None = None,
+    as_of: datetime | None = None,
     model_version: str = MODEL_VERSION,
 ) -> RiskEvent: ...
 
 # Sub-score rule functions — each independently unit-testable
-def score_rainfall_shock(observations: list[Observation], irrigation_type: str, as_of: datetime) -> SubScoreResult: ...
+def score_rainfall_signals(observations: list[Observation], as_of: datetime) -> list[SubScoreResult]: ...
+def score_satellite_stress(observations: list[Observation], as_of: datetime) -> SubScoreResult: ...
+def score_pest_pressure(observations: list[Observation], as_of: datetime) -> SubScoreResult: ...
 def score_price_stress(observations: list[Observation], crop: str, as_of: datetime) -> SubScoreResult: ...
 def score_repayment_window(observations: list[Observation], consent: ConsentContext, as_of: datetime) -> SubScoreResult: ...
-def score_crop_soil_vulnerability(crop: str, sowing_date: date, soil_context: SoilContext | None, as_of: date) -> SubScoreResult: ...
+def vulnerability_signals(farmer: FarmerContext, as_of: datetime) -> list[SubScoreResult]: ...
 def score_farmer_reported_shock(observations: list[Observation], as_of: datetime) -> SubScoreResult: ...
 
 # Composable helpers
@@ -355,9 +378,9 @@ sequenceDiagram
     M4->>M4: 1. validate minimum context
     M4->>M4: 2. per domain: select latest qualifying Observation(s)
     M4->>M4: 3. staleness check (ttl vs as_of) -> freshness
-    M4->>M4: 4. run 5 rule functions -> SubScoreResult[]
-    M4->>M4: 5. sum -> total score, clamp [0,100]
-    M4->>M4: 6. compute_confidence (weight-normalised)
+    M4->>M4: 4. run S1-S5 and S13-S14 rules; derive S6-S12 multiplier
+    M4->>M4: 5. shock × vulnerability -> final score, clamp [0,100]
+    M4->>M4: 6. compute_confidence from shock observations
     M4->>M4: 7. raw_band = band_from_score(total)
     M4->>M4: 8. apply_hysteresis(raw_band, prior_events) -> BandDecision
     M4->>M4: 9. stale-feed suppression check on escalating domains
@@ -378,15 +401,15 @@ sequenceDiagram
    Defense-in-depth; M2/M3 should already prevent this.
 3. **Per domain, select observations** — most recent qualifying `Observation`(s) per `metric`, sorted for
    determinism (order-independence guaranteed regardless of input list order).
-4. **Staleness** — `freshness = 1.0` if `age ≤ ttl × 0.5`; linear decay to `0.3` between `ttl×0.5` and
-   `ttl`; floor `0.1` beyond `ttl` (data still used, never dropped — "stale lowers confidence, never
-   deletes").
-5. **Run the 5 rule functions** (rule tables in §4) → `SubScoreResult[]`, each clamped to `[0, domain max]`.
-6. **Sum** sub-score values (only `applicable=True` domains) → `total_score`, clamp `[0, 100]`.
-7. **Confidence** — `Σ (weight_fraction_i × freshness_i × completeness_i)` re-normalised over applicable
-   domains only (repayment excluded from the denominator when not opted in — absence isn't missing data).
-8. **`raw_band = band_from_score(total_score)`** via `BAND_CUTOFFS`.
-9. **Hysteresis** (`apply_hysteresis`):
+4. **Staleness** — `freshness = 1.0` if `age ≤ ttl × 0.5`; linear decay to `0.3` at/past the
+   TTL (data is still used, never dropped — "stale lowers confidence, never deletes").
+5. **Run S1–S5 and S13–S14** → shock `SubScoreResult[]`, each clamped to its authoritative max.
+6. **Derive S6–S12** → `vulnerability_multiplier = clamp(1.0 + Σ adjustments, 0.7, 1.3)`.
+7. **Final score** — `clamp(sum(shock_points) × vulnerability_multiplier, 0, 100)`.
+8. **Confidence** — average freshness/completeness of applicable shock observations; absent opt-in
+   repayment is excluded rather than treated as a missing source.
+9. **`raw_band = band_from_score(final_score)`** via CRIDA-aligned cutoffs 50/70.
+10. **Hysteresis** (`apply_hysteresis`):
    - No prior `RiskEvent` for this farmer ⇒ **bootstrap**: `confirmed_band = raw_band` immediately.
    - `raw_band == confirmed_band` (from most recent prior event) ⇒ band unchanged, pending cleared.
    - `raw_band != confirmed_band` ⇒ update/extend a *pending* band candidate. Confirm the flip only once
@@ -397,14 +420,16 @@ sequenceDiagram
      already spaced ≥3 simulated days apart; hysteresis is evaluated on **observation time**, not
      wall-clock processing time, so the "Red within 24h" acceptance test (real demo runtime) and the
      "two observations / three days" hysteresis rule (simulated data time) are not in tension.
-10. **Stale-feed suppression** — if a domain among the raw top-3 contributors (by point contribution) has
+11. **Stale-feed suppression** — if an acute signal among the raw top-3 contributors (by point contribution) has
     `freshness < STALE_FRESHNESS_FLOOR`, set `suppressed_escalation = True`: the outgoing `band` is capped
     at `min(raw_band, confirmed_band_before_this_event)`, and `confidence` reflects the staleness. De-escalation
     is never suppressed (dropping risk is always safe to report).
-11. **Top-3 drivers** — sort `Contributor[]` by point contribution descending, take top 3, each carrying
-    `rule_id` + `source` + `observed_at` (acceptance: "every driver traces to a rule + source").
-12. **Expiry** — `expires_at = min(as_of + DEFAULT_EXPIRY_HOURS, as_of + min(ttl of contributing observations))`.
-13. **Stamp** `model_version`, assemble and return `RiskEvent`.
+12. **Top-3 drivers** — sort `Contributor[]` by point contribution descending, take top 3, each carrying
+    `signal` + `source` + `observed_at` (acceptance: "every driver traces to a rule + source").
+13. **Engagement context** — derive S15 text flags from delivery/outreach observations; never add points.
+14. **Expiry** — `expires_at = as_of + min(ttl of supplied observations)`, with a 48-hour default when
+    no observation is available.
+15. **Stamp** `model_version`, `evaluated_at`, disclaimer and assemble `RiskEvent`.
 
 ### 9.3 Failure path — stale price feed during a drought
 
@@ -451,31 +476,31 @@ branch coverage on `rules/`, `bands.py`, `confidence.py`.
 
 | # | Test | Scenario | Expected result |
 |---|---|---|---|
-| 1 | Rainfall — rainfed severe drought | −32% deviation, rainfed | 35 pts, driver "rainfall −32%" |
-| 2 | Rainfall — irrigation modulation | Same −32% deviation, irrigated | ≈14 pts (35×0.4), lower driver rank |
-| 3 | Rainfall — flood risk | +45% deviation, rainfed | 20 pts, `flood_risk` driver text |
-| 4 | Price — linear scaling | −20% deviation | 26 pts, driver "cotton −20%" |
+| 1 | Rainfall — severe deficit | −32% deviation | 20 pts, driver "rainfall −32%" |
+| 2 | Vulnerability — irrigation | Same shock, assured vs rainfed | S9 changes multiplier by ±0.10 |
+| 3 | Rainfall — flood risk | +45% deviation | 5 pts, flood-risk driver text |
+| 4 | Price — below-MSP shock | −20% deviation + below-MSP | 14 pts, price driver and MSP flag |
 | 5 | Price — no deviation | 0% or positive | 0 pts, no driver text |
 | 6 | Repayment — not opted in | `consent.due_window=False`, no `due_window` observation | domain `applicable=False`, absent from `contributors[]`, excluded from confidence denominator |
 | 7 | Repayment — opted in, due in 12 days, high amount | consent true | 16×1.15=18.4→18 pts (clamped ≤20), driver "loan due in 12 days" |
-| 8 | Crop/soil — flowering stage | 40 days since sowing, cotton | 10 pts (peak vulnerability) |
-| 9 | Crop/soil — near harvest | 100 days since sowing | 2 pts |
-| 10 | Farmer-reported — single event | 1 `pest_seen` in 7d window | 3 pts |
-| 11 | Farmer-reported — multiple events | 2+ events, mixed types | 5 pts (capped) |
-| 12 | Band boundary — Green/Amber | score=29 vs score=30 | green vs amber exactly at cutoff |
-| 13 | Band boundary — Amber/Red | score=59 vs score=60 | amber vs red exactly at cutoff |
+| 8 | Growth-stage vulnerability | 40 days since sowing | S10 adds +0.10 multiplier |
+| 9 | Soil-retention vulnerability | poor soil | S12 adds +0.05 multiplier |
+| 10 | Farmer-reported acute shock | `crop_damaged` | S14 adds 7 points |
+| 11 | Engagement context | 2 unanswered outreach attempts | S15 flag only; score unchanged |
+| 12 | Band boundary — Green/Amber | score=49 vs score=50 | green vs amber exactly at cutoff |
+| 13 | Band boundary — Amber/Red | score=69 vs score=70 | amber vs red exactly at cutoff |
 | 14 | Hysteresis — bootstrap | No prior `RiskEvent` for farmer, raw_band=red | `confirmed_band=red` immediately, no delay |
 | 15 | Hysteresis — single anomalous observation | Prior confirmed green, one red-qualifying event | band stays green, `pending_band=red`, `pending_observation_count=1` |
 | 16 | Hysteresis — confirmed flip | Two red-qualifying events ≥3 days apart (by `observed_at`) | `confirmed_band` flips to red |
 | 17 | Hysteresis — de-escalation flip | Two green-qualifying events ≥3 days apart after a confirmed red | `confirmed_band` flips to green (symmetric) |
-| 18 | Confidence — full freshness/completeness | All 5 domains fresh + present | confidence ≈1.0 |
+| 18 | Confidence — full freshness/completeness | All applicable shock signals fresh + present | confidence ≈1.0 |
 | 19 | Confidence — one stale feed | Price observation freshness=0.3 | confidence drops proportionally to price's 0.30 weight fraction |
-| 20 | Confidence — domain never reported | No farmer_report ever | completeness=0 for that domain, confidence reduced by its 0.05 weight fraction |
+| 20 | Confidence — signal never reported | No farmer report ever | confidence reflects missing applicable signal |
 | 21 | Stale-feed suppression | Price stale (freshness<0.3) while otherwise Red-qualifying | `suppressed_escalation=True`, band capped at prior confirmed band, confidence lowered, **no false Red** (masterspec §14 acceptance) |
-| 22 | Top-3 drivers traceability | Any qualifying scenario | Exactly 3 contributors returned, each with non-null `rule_id` + `source`; every driver traces to a rule/source (masterspec §14 acceptance) |
-| 23 | **Flagship acceptance test** | Drought (rainfall ≤−30%, rainfed) + 20% price crash + opted-in due window (≤14 days) | `total_score ≥ 60`, `band="red"`, `contributors[:3]` = rainfall + price + repayment, all three driver texts present (masterspec §14 acceptance, verbatim) |
+| 22 | Top-3 drivers traceability | Any qualifying scenario | Contributors carry non-null `signal` + `source`; every driver traces to a rule/source (masterspec §14 acceptance) |
+| 23 | **Flagship acceptance test** | Drought (rainfall ≤−30%) + 20% price crash + opted-in due window (≤14 days) + high vulnerability | `total_score ≥ 70`, `band="red"`, `contributors[:3]` includes S1 + S13 + S5, all three driver texts present (masterspec §14 acceptance) |
 | 24 | Expiry — bounded by shortest TTL | Rainfall ttl=48h, price ttl=72h | `expires_at ≤ as_of + 48h` |
-| 25 | `model_version` stamping | Default call | `RiskEvent.model_version == "rules-v1.0.0"`; changing `MODEL_VERSION` changes the stamp (regression pin) |
+| 25 | `model_version` stamping | Default call | `RiskEvent.model_version == "rules-fdi-0.2.0"`; changing `MODEL_VERSION` changes the stamp (regression pin) |
 | 26 | Guardrail — banned field | `Observation.metric="bank_account_balance"` | Raises `PrivacyGuardrailError`, no `RiskEvent` produced |
 | 27 | Determinism / order-independence | Same observation set, shuffled input order (Hypothesis) | Byte-identical `RiskEvent` output |
 | 28 | Shadow challenger isolation | Shadow flag enabled, arbitrary shadow prediction | `RiskEvent` output is bit-for-bit identical to shadow-disabled run |
@@ -492,10 +517,10 @@ confidence and suppresses escalation", "every action card traces to a rule + sou
 
 | Build now (MVP) | Stretch / post-prototype |
 |---|---|
-| All 5 rule functions with the placeholder tables in §4 | Agronomist-calibrated thresholds per crop, informed by pilot data (§19 KPI: Red precision ≥60% after calibration) |
+| All 7 shock rules + S6–S12 multiplier + S15 flag with the bounded tables in §4 | Agronomist-calibrated thresholds per crop, informed by pilot data (§19 KPI: Red precision ≥60% after calibration) |
 | Symmetric 2-observation/3-day hysteresis | Asymmetric hysteresis (fast escalate, slow de-escalate) if product decides it's safer |
 | Confidence, expiry, stale-feed suppression | Per-domain confidence breakdown surfaced to officer UI (M8) beyond the single scalar |
-| Two illustrative MVP crops (cotton, soybean) | Full crop table for all-India coverage (explicitly out of MVP per masterspec §13) |
+| Two illustrative MVP crops (cotton, soybean) plus profile vulnerability fields | Full crop table for all-India coverage (explicitly out of MVP per masterspec §13) |
 | `model_version` constant, hand-bumped per release | Config-driven, versioned weight/threshold sets loadable without a code redeploy (needed for live recalibration during a pilot) |
 | Shadow ML extension point (interface + isolation test), no real model wired | An actual calibrated shadow model once labelled outcomes exist (masterspec §10.D, §20 roadmap) |
 | `SCORE_DISCLAIMER` constant exported | Formal legal/compliance review of the disclaimer copy |

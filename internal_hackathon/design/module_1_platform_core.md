@@ -228,8 +228,8 @@ class AlertCase(BaseModel):
     village_id: str
     band: Literal["Green", "Amber", "Red"]
     confidence: float = Field(ge=0.0, le=1.0)
-    recipient_role: Literal["officer", "district_admin"]
-    channel_preferences: list[Literal["pwa", "sms", "voice", "ivr"]]
+    recipient_role: Literal["extension_officer", "district_admin"]
+    channel_preferences: list[Literal["push", "sms", "voice", "ivr", "whatsapp"]]
     sent_at: datetime | None
     ack_at: datetime | None
     status: Literal["New", "Acknowledged", "Visited", "Referred", "Resolved"]
@@ -248,7 +248,7 @@ class ActionCard(BaseModel):
 # app/schemas/auth_context.py — issued by M2
 class AuthContext(BaseModel):
     principal: str
-    role: Literal["farmer", "officer", "district_admin", "admin"]
+    role: Literal["farmer", "extension_officer", "district_admin", "admin"]
     scopes: list[str]
     mfa_verified: bool
 

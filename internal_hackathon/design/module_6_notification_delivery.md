@@ -3,6 +3,19 @@
 Spec owner: Agent — Notification/Delivery · Package: `services/notification`
 Conforms to the template in `module_0_architecture_overview.md §5`. Aligns with `masterspecv1.md` (esp. §3 hysteresis/alert-fatigue, §6 adapters, §7 voice, §17 risks).
 
+> **Amendment (outreach strategy).** M6 executes; **[Module 9](./module_9_outreach_automation.md)
+> decides** *whether, when and by which channel*. Two rules from M9 bind this module:
+>
+> 1. **Channel priority is ordered by reach, not richness:**
+>    **SMS (1) → IVR/voice (2) → WhatsApp (3) → PWA push (4)**. SMS and IVR reach *any* phone with
+>    no internet; IVR needs no literacy at all. **Email is not a farmer channel** — officers only.
+>    WhatsApp is a new provider to add alongside the existing four.
+> 2. **Red band dispatches SMS *and* IVR in parallel** (redundancy where it matters); lower bands
+>    use a single channel with fallback-on-failure to the next rung.
+>
+> M6 also serves M9's inbound paths by exposing delivery status for missed-call callbacks and
+> IVR keypress sessions.
+
 ---
 
 ## 1. Module purpose & responsibilities
@@ -175,7 +188,7 @@ OutboxEntry {
 |---|---|---|
 | `POST /api/v1/notifications/dispatch` | M5 (on Red fire / sustained Amber, per M4 hysteresis) | `{event_id, case_id, card_id, channel_pref[]}` → enqueues delivery |
 | `GET /api/v1/notifications/{event_id}/status` | M5, M7, M8 | Returns latest `DeliveryAttempt[]` for the event |
-| `POST /api/v1/notifications/{event_id}/resend` | M5 / officer action (AuthContext role=officer) | Manual resend, still consent- and cap-gated |
+| `POST /api/v1/notifications/{event_id}/resend` | M5 / officer action (AuthContext role=extension_officer) | Manual resend, still consent- and cap-gated |
 | `POST /api/v1/notifications/webhooks/{provider}` | External provider (SMS/voice gateway) | Delivery receipt callback → updates `DeliveryAttempt.status` |
 
 ### 6.2 Outbound (M6 calls other modules/services)

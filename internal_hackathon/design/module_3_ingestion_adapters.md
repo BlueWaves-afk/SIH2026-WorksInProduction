@@ -6,6 +6,22 @@ adapters; the common adapter interface; mock/replay fixtures; data-quality + TTL
 > Read `masterspecv1.md` and `module_0_architecture_overview.md` first. This spec follows the
 > module_0 §5 template and must not contradict either document or redesign a sibling module.
 
+> **Amendment (signal model v2 — FDI alignment).** The scoring engine now implements 15 signals
+> across ICAR-CRIDA's 7 distress dimensions ([`signal_model_fdi_aligned.md`](./signal_model_fdi_aligned.md)).
+> This module gains **three new sources**, all free and public, following the existing
+> Mock/Real adapter pattern:
+>
+> | New source | Gives | Feeds | MVP |
+> |---|---|---|---|
+> | **Sentinel-2** (Copernicus) | NDVI / NDWI anomaly vs. village-season baseline | **S3 satellite crop stress (15 pts)** | Fixture; live = stretch |
+> | **MSP reference table** (CACP) | Minimum Support Price per commodity/season | S13 below-MSP flag | Static JSON |
+> | **Soil / SoilHealthCard** | Soil water-holding capacity per village | S12 vulnerability | Static per village |
+>
+> The AgriStack adapter also gains a **scheme-enrolment** field (feeds S6). Sentinel-2 has its own
+> TTL (10 days, 5-day revisit) and must degrade to `quality=stale` like every other source.
+> S3 is the single biggest accuracy upgrade in v2 — it observes the crop directly rather than
+> inferring stress from rainfall.
+
 ---
 
 ## 1. Module purpose & responsibilities
@@ -156,6 +172,10 @@ Observation      { source, observed_at, village_id | plot_grid, metric, value: J
 ConsentContext   { farmer_token, storage, contact, analytics, due_window, consent_scopes[] }
 ```
 
+The runnable adapter package uses an equivalent `ObservationPayload` transport DTO so it can be
+installed and tested independently of the FastAPI service. M1 converts `ObservationPayload` to the
+canonical schema at the orchestration boundary; no adapter writes to the M1 database.
+
 ### 5.2 Owned by M3 (internal — never imported by M4/M5)
 
 ```python
@@ -205,9 +225,12 @@ Cross-checked against masterspecv1 §3's signal table so M4 can consume without 
 
 | Source | `Observation.metric` | `unit` | Feeds M4 sub-score |
 |---|---|---|---|
-| IMD | `rainfall_actual`, `rainfall_forecast`, `rainfall_normal` | mm | Rainfall/forecast shock (0–35) |
-| Agmarknet/eNAM | `mandi_modal_price`, `mandi_arrivals` | INR/quintal, quintal | Mandi price stress (0–30) |
-| Bhuvan/OSM | `village_coordinates`, `mandi_coordinates` | lat/lon (GeoJSON) | Map display only — not scored |
+| IMD | `rainfall_actual`, `rainfall_forecast`, `rainfall_normal` | mm | **S1** deficit (20) + **S2** excess/flood (10) |
+| Agmarknet/eNAM | `mandi_modal_price`, `mandi_arrivals` | INR/quintal, quintal | **S13** price shock (20) |
+| **Sentinel-2** ⭐ | `ndvi`, `ndwi`, `ndvi_baseline` | index (−1..1) | **S3** satellite crop stress (15) |
+| **MSP reference** ⭐ | `msp_price` | INR/quintal | **S13** below-MSP flag |
+| **Soil / SoilHealthCard** ⭐ | `soil_water_holding_capacity` | class | **S12** vulnerability multiplier |
+| Bhuvan/OSM | `village_coordinates`, `mandi_coordinates`, `kvk_fpo_locations` | lat/lon (GeoJSON) | Map + **S7** institutional access |
 | AgriStack | *(not an Observation — `ProfilePrefill`)* | — | Onboarding prefill only |
 | Bhashini | *(not an Observation — stateless call)* | — | I/O layer only |
 

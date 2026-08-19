@@ -51,15 +51,37 @@ The software's single job: **decide who a human should call today, and prove the
 
 Transparent, rules-based, testable. **The score is never hidden inside a model.**
 
-| Signal | Weight | Source |
-|---|---:|---|
-| Rainfall / forecast shock | 0–35 | IMD (modulated by `irrigation_type`) |
-| Mandi price stress | 0–30 | Agmarknet / eNAM |
-| Optional repayment window | 0–20 | Farmer opt-in only |
-| Crop / soil vulnerability | 0–10 | Crop + sowing stage + soil context |
-| Farmer-reported shock | 0–5 | Farmer input |
+> **Signal model v2 (current):** the engine now implements **15 signals across the 7 dimensions of
+> ICAR-CRIDA's Farmers' Distress Index**. Full definition:
+> [`signal_model_fdi_aligned.md`](./signal_model_fdi_aligned.md). Summary below; the 5-signal v1
+> table it replaces is kept in that document's migration section.
 
-**Bands:** Green 0–29 · Amber 30–59 · Red 60–100.
+```
+final_score = clamp( shock_score × vulnerability_multiplier , 0 , 100 )
+```
+
+**Shock signals** (acute) → 0–100, equal-weighted within each FDI dimension:
+
+| # | Signal | FDI dim | Source | Pts |
+|---|---|---|---|---:|
+| S1 | Rainfall deficit | D1 exposure | IMD | 20 |
+| S2 | Rainfall excess / flood | D1 | IMD | 10 |
+| S3 | **Satellite crop stress (NDVI/NDWI)** | D1 | **Sentinel-2** | 15 |
+| S4 | Pest / disease pressure | D1 | Farmer + advisory | 8 |
+| S5 | Repayment window (**opt-in**) | D2 debt | Farmer | 20 |
+| S13 | Price shock (**incl. below-MSP**) | D6 triggers | Agmarknet + MSP | 20 |
+| S14 | Acute farmer-reported shock | D6 | Farmer (IVR/SMS) | 7 |
+
+**Vulnerability signals** (structural) → multiplier **0.7–1.3**: scheme coverage (S6),
+institutional access (S7), land holding (S8), irrigation (S9), growth-stage sensitivity (S10),
+crop diversification (S11), soil retention (S12) — FDI dimensions D3, D4, D5.
+
+**Bands — aligned to CRIDA's cutoffs:** Green <50 · Amber 50–69 · **Red ≥70**
+(CRIDA: <0.5 low · 0.5–0.7 moderate · >0.7 severe). Our Red *is* CRIDA's "severe distress".
+
+**FDI D7 (socio-psychological) is deliberately not scored.** CRIDA collects it via trained human
+interview; inferring it from telemetry would be unreliable and invasive. S15 exists only as an
+officer-side context flag ("3 outreach attempts unanswered") and never becomes a number.
 
 **Every score carries:**
 - **Top-3 drivers** — the human-readable *why* ("rainfall −28%, cotton −18%, loan due in 12 days").
@@ -69,6 +91,25 @@ Transparent, rules-based, testable. **The score is never hidden inside a model.*
 - **Stale-feed suppression** — a feed past its TTL lowers confidence and can suppress escalation.
 
 **Non-negotiable label on every score:** *"This is not a credit, loan-default, or insurance score."*
+
+### 3.1 Why rules and not ML — and where ML *does* belong
+
+Evidence review: [`research_risk_modelling.md`](./research_risk_modelling.md).
+
+- **ML perceives, rules decide.** ML is welcome where it has ground truth — satellite crop-stress,
+  price forecasting — and feeds *signals into* the index. The decision that a human should contact a
+  named person stays deterministic. Same split as ML perception inside a rule-based safety envelope.
+- **The evidence supports it for this task.** In food-security early warning, the rules-based expert
+  system FEWS NET runs ~84% accuracy (>93% at lower severity) and **outperformed XGBoost in
+  crop-farming regions**; the field's own conclusion is that AI should *boost, not replace* it.
+- **There is no honest label.** Nobody records "this farmer needed support." The only available proxy
+  is loan default — training on it would silently make this the credit score we promise it is not.
+- **Alignment:** this index operationalises **ICAR-CRIDA's Farmers' Distress Index** (7 dimensions,
+  0–1 score, names the top contributing component) — turning a periodic, survey-based, block-level
+  research instrument into a continuous, per-farmer signal.
+- **Roadmap:** add a **satellite NDVI/NDWI crop-stress signal** (the real accuracy upgrade — direct
+  observation instead of a rainfall proxy), then let the shadow challenger graduate once officer
+  resolutions have produced real labels. **v1 earns v2.**
 
 ---
 
@@ -84,28 +125,38 @@ Minimal; sensitive fields coarse-banded or opt-in. **No Aadhaar, bank account, o
 | `village_id` | ref | Ties to weather, mandi, officer routing | GPS→village / picker / AgriStack | all signals |
 | `crop` | enum | Which price to watch + vulnerability | Icon picker | market + crop/soil |
 | `sowing_date` | date | Crop stage → vulnerability | Season picker | crop/soil |
-| `irrigation_type` | enum (rainfed/irrigated) | Rain exposure weighting | Icon picker | rainfall |
-| `area_band` | enum (<1 / 1–2 / >2 ha) | Equity reporting (coarse) | Picker | reporting |
+| `irrigation_type` | enum (rainfed/partial/assured) | Rain exposure | Icon picker | **S9** vulnerability |
+| `area_band` | enum (<1 / 1–2 / >2 ha) | Holding size vulnerability + equity reporting | Picker | **S8** vulnerability |
+| `secondary_crop` *(optional)* ⭐ | enum \| none | Contingency/diversification — monocrop is more exposed | Icon picker (single tap) | **S11** vulnerability |
+| `schemes_enrolled` ⭐ | multi-select (PM-Kisan / PMFBY / KCC / none) | Adaptive capacity; uncovered farmers are more exposed | Chips (single tap) | **S6** vulnerability |
 | `phone` | string (encrypted, M2 vault only) | SMS/voice/callback delivery | Onboarding | delivery |
 | `consent_flags` | object (M2 consent ledger; not a profile authority) | Legal basis for storage/contact/analytics | Toggle screen | — |
-| `due_window` *(opt-in)* | `{due_date_band, amount_band}` | Repayment-stress signal | Explicit opt-in slider | repayment |
+| `due_window` *(opt-in)* | `{days_to_due, amount_band}` | Repayment-stress signal | Explicit opt-in slider | repayment |
 | `farmer_report` *(ongoing)* | enum event | "Pest seen", "no buyer", "crop damaged" | Big-button + voice | farmer report |
 
 **Minimum to compute a score:** `village_id` + `crop` + `irrigation_type` + `sowing_date`.
 
 ### 4.2 External APIs (system pulls)
 
-Only **two** external sources feed the score — a small, auditable signal set is a strength, not a gap.
+All sources are free and public. Signal model v2 ([`signal_model_fdi_aligned.md`](./signal_model_fdi_aligned.md))
+adds three streams to the original two.
 
 | Source | Gives | Feeds | Access | MVP | Refresh / TTL |
 |---|---|---|---|---|---|
-| **IMD** | Rainfall actual + forecast vs normal | Rainfall shock 0–35 | IMD public weather API | District fixture | Daily · 48h |
-| **Agmarknet / eNAM** | Daily modal prices + arrivals | Market stress 0–30 | data.gov.in Agmarknet / eNAM | Price fixture | Daily · 72h |
-| **AgriStack** | Farmer/crop/land prefill | *profile only* | Consented pull via API Setu | Mock + consent screen | On onboard |
+| **IMD** | Rainfall actual + forecast vs normal | S1 deficit, S2 excess | IMD public weather API | District fixture | Daily · 48h |
+| **Agmarknet / eNAM** | Daily modal prices + arrivals | S13 price shock | data.gov.in Agmarknet / eNAM | Price fixture | Daily · 72h |
+| **Sentinel-2** ⭐ | NDVI / NDWI vegetation + moisture indices | **S3 satellite crop stress** | Copernicus open data (free, 10 m, 5-day revisit) | Fixture; live = stretch | 5-day · 10d |
+| **MSP reference** ⭐ | Minimum Support Price per commodity | S13 below-MSP flag | CACP-published, static table | Static JSON | Seasonal |
+| **Soil / SoilHealthCard** ⭐ | Soil type → water-holding capacity | S12 (vulnerability) | Static per village | Static | Static |
+| **AgriStack** | Farmer/crop/land prefill **+ scheme enrolment** | *profile* + S6 | Consented pull via API Setu | Mock + consent screen | On onboard |
 | **Bhashini** | ASR + TTS + translation (11+ langs) | *I/O layer* | Bhashini public APIs | Mock/cached prompts | Per interaction |
-| **Bhuvan / OSM** | Village + mandi coordinates | *map display* | Tiles / geocode | Static GeoJSON | Static |
+| **Bhuvan / OSM** | Village + mandi coordinates, KVK/FPO locations | *map* + S7 | Tiles / geocode | Static GeoJSON | Static |
 
-`repayment` and `farmer_report` sub-scores come **only** from farmer input — no external loan-bureau or credit API. That is the privacy firewall.
+⭐ = added in signal model v2. **S3 is the single biggest accuracy upgrade** — it observes the crop
+directly instead of inferring stress from rainfall as a proxy.
+
+`repayment` (S5) and all farmer-reported signals (S4, S14) come **only** from farmer input — no
+external loan-bureau or credit API. That is the privacy firewall.
 
 ### 4.3 Scheme eligibility — retrieval, not a lookup
 

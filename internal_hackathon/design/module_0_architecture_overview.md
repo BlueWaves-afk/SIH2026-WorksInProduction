@@ -22,6 +22,7 @@ that every module spec must conform to. Read `masterspecv1.md` first, then this 
 | 6 | Notification & Multi-Channel Delivery | `services/notification` | PWA push / SMS / voice / IVR delivery, action-card rendering, offline outbox, provider adapters |
 | 7 | AI & Agentic Copilot Layer | `services/ai-copilot` | Officer copilot (agentic + RAG over scheme docs), farmer voice copilot, LLM explainer/translator, guardrails, shadow ML |
 | 8 | Frontend Apps | `apps/farmer-pwa`, `apps/officer-dashboard`, `packages/ui-kit` | Voice-first farmer PWA + officer triage dashboard + shared design system |
+| 9 | Outreach Automation & Channels | `services/outreach` | The daily cycle (scheduler), trigger/suppression policy, SMS→IVR→WhatsApp channel ladder, and app-free inbound (missed call, IVR keypress, SMS reply) |
 
 ---
 

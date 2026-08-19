@@ -1,45 +1,80 @@
-# Internal Hackathon — KisanSetu platform
+# Internal Hackathon — Platform Monorepo
 
-This folder is the working design baseline for the SIH problem-statement-2 prototype. It contains
-the master product specification, the eight module specifications, and the cross-system review.
-It is intentionally a specification-first commit: the implementation scaffold has not yet been
-created.
+An **explainable farmer-support radar**: it detects when a farmer may need help early,
+explains *why* in their own language, sends a safe advisory, and routes the case to a
+human agriculture officer who closes the loop.
 
-The source problem-statement document is [`SIH Problem Statements.docx`](SIH%20Problem%20Statements.docx).
-It is an institute-level, SIH-styled document and must not be treated as the official national SIH
-2026 problem-statement roster without verification through the SIH SPOC portal.
+> Product name is **not finalised**. All code and docs refer to "the platform".
 
-## Read in this order
+## Two decisions that define this system
 
-1. [`design/masterspecv1.md`](design/masterspecv1.md) — product, users, scoring, MVP, hosting, and acceptance tests.
-2. [`problem_statement_inventory.md`](problem_statement_inventory.md) — source provenance and comparative review of all seven internal statements.
-3. [`design/module_0_architecture_overview.md`](design/module_0_architecture_overview.md) — module map, dependency rules, and canonical contracts.
-4. [`design/module_1_platform_core.md`](design/module_1_platform_core.md) — FastAPI gateway, database, API, and deployment wiring.
-5. [`design/module_2_identity_consent_privacy.md`](design/module_2_identity_consent_privacy.md) — authentication, consent, token vault, retention, and audit.
-6. [`design/module_3_ingestion_adapters.md`](design/module_3_ingestion_adapters.md) — replay fixtures and government-data adapters.
-7. [`design/module_4_scoring_engine.md`](design/module_4_scoring_engine.md) — deterministic score, confidence, drivers, and hysteresis.
-8. [`design/module_5_case_workflow.md`](design/module_5_case_workflow.md) — officer queue, case state machine, SLAs, and aggregates.
-9. [`design/module_6_notification_delivery.md`](design/module_6_notification_delivery.md) — action-card rendering, outbox, retries, and provider adapters.
-10. [`design/module_7_ai_copilot.md`](design/module_7_ai_copilot.md) — guarded officer copilot and voice narration stretch layer.
-11. [`design/module_8_frontend_apps.md`](design/module_8_frontend_apps.md) — farmer PWA, officer dashboard, and shared UI.
-12. [`design/system_review.md`](design/system_review.md) — review findings, decisions already applied, residual risks, and implementation gates.
+1. **Push, not pull.** A farmer will never open our site. The daily cycle reaches *out* —
+   SMS → IVR → WhatsApp, ordered by reach. See [Module 9](design/module_9_outreach_automation.md).
+2. **ML perceives, rules decide.** ML where it has ground truth (satellite crop stress, price
+   forecasting); a deterministic index for the decision to contact a person.
+   Evidence: [research_risk_modelling.md](design/research_risk_modelling.md).
 
-## Current implementation order
+## Design docs
 
-The first build slice should be one replayable vertical path:
+Start with [`design/masterspecv1.md`](design/masterspecv1.md), then
+[`design/module_0_architecture_overview.md`](design/module_0_architecture_overview.md)
+(module map, shared contracts, cross-module decisions). Each module has its own spec.
 
-`fixture → adapter → score → RiskEvent → AlertCase → officer acknowledgement → farmer status card`
+## Module map
 
-Keep live government credentials, real telecom delivery, live Bhashini voice, and external-LLM
-copilot calls out of the critical demo path until the replay path, privacy controls, and audit trail
-pass. The master specification labels those integrations as stretch or production handoff work.
+| # | Module | Location | Spec |
+|---|---|---|---|
+| 1 | Platform Core & Data Layer | `services/platform-core` | [spec](design/module_1_platform_core.md) |
+| 2 | Identity, Consent & Privacy | `libs/identity-consent` | [spec](design/module_2_identity_consent_privacy.md) |
+| 3 | Ingestion & Government Adapters | `libs/adapters` | [spec](design/module_3_ingestion_adapters.md) |
+| 4 | Explainable Scoring Engine | `services/scoring-engine` | [spec](design/module_4_scoring_engine.md) |
+| 5 | Case Management & Officer Workflow | `services/case-workflow` | [spec](design/module_5_case_workflow.md) |
+| 6 | Notification & Delivery | `services/notification` | [spec](design/module_6_notification_delivery.md) |
+| 7 | AI & Agentic Copilot | `services/ai-copilot` | [spec](design/module_7_ai_copilot.md) |
+| 8 | Frontend Apps | `apps/*`, `packages/ui-kit` | [spec](design/module_8_frontend_apps.md) |
+| 9 | Outreach Automation & Channels | `services/outreach` | [spec](design/module_9_outreach_automation.md) |
 
-## Source-of-truth rules
+## The one rule that makes parallel work possible
 
-- Shared wire contracts are owned by M1 and summarized in Module 0.
-- Consent is owned by M2; a profile cache must not become a second consent authority.
-- `farmer_token` identifies a farmer but is never a credential. Farmer requests require M2's
-  short-lived session.
-- M4's score is deterministic and read-only from the AI layer.
-- M5 owns case status; M6 owns delivery-attempt status.
-- Synthetic replay data is for demonstration and testing, not evidence of field impact.
+**Everything crosses module boundaries through the shared contracts in
+`services/platform-core/app/schemas/`.** They are the integration boundary. Import them, code
+against them, and mock the other side. Never reach into another module's internals. The current
+scaffold intentionally keeps government adapters, notification providers, ORM tables, and the AI
+copilot behind explicit TODO boundaries; the pure M4 engine and M3 replay/core contracts are the
+first runnable slices.
+
+```
+Observation → M3 produces, M4 consumes
+RiskEvent   → M4 produces, M5/M6/M7/M8 consume
+AlertCase   → M5 produces, M6/M7/M8 consume
+DeliveryAttempt → M6 produces, M5/M7/M8 read
+CopilotBrief    → M7 produces, M8 consumes
+OutreachDecision / InboundEvent → M9 produces
+AuthContext / ConsentContext → M2 issues, everyone honours
+```
+
+## Quick start
+
+```bash
+# Python services (3.11+)
+python3 -m venv .venv
+make PYTHON=.venv/bin/python install
+
+# Frontend (Node 20+)
+npm install
+npm run dev --workspace apps/farmer-pwa
+```
+
+## Layout
+
+```
+apps/        farmer-pwa, officer-dashboard          (M8)
+packages/    ui-kit                                  (M8)
+services/    platform-core, scoring-engine,          (M1, M4, M5,
+             case-workflow, notification, ai-copilot,  M6, M7, M9)
+             outreach
+libs/        identity-consent, adapters              (M2, M3)
+fixtures/    90-day replay datasets + scenarios      (M3)
+infra/       docker, CI/CD
+design/      specs (source of truth)
+```

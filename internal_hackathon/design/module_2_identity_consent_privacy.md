@@ -129,7 +129,7 @@ FarmerIdentityVault {
 Principal {                              # officer/admin/service account
   principal_id      uuid PK
   email             text unique
-  role              enum(officer, district_admin, super_admin,
+  role              enum(extension_officer, district_admin, super_admin,
                           auditor, service_account)
   village_scope[]   uuid[]               # villages this officer may see
   district_scope    uuid
@@ -405,7 +405,7 @@ Maps to `masterspecv1.md §14` acceptance tests plus module-specific criteria.
 
 **MVP (build for the demo):**
 - Supabase Auth login + TOTP MFA for officers/admins.
-- RBAC roles: `officer`, `district_admin`, `super_admin`, `service_account`; village/district scoping.
+- RBAC roles: `extension_officer`, `district_admin`, `super_admin`, `service_account`; village/district scoping.
 - Farmer token vault with encrypted phone, separate schema.
 - Consent capture with all four toggles at onboarding; withdrawal endpoint.
 - Cohort suppression hook wired into M5's district analytics (demo can show a suppressed cohort).
