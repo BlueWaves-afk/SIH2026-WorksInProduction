@@ -12,6 +12,7 @@ from app.scoring.engine import ScoringEngine
 from app.models.farmer import FarmerProfile
 from app.models.risk import RiskEvent
 from app.models.case import AlertCase
+from app.models.outbox import OutboxMessage
 
 router = APIRouter()
 weather_adapter = MockWeatherAdapter()
@@ -83,11 +84,14 @@ def replay_scenario(request: ReplayRequest, db: Session = Depends(get_db)):
         db.refresh(case)
         case_info = {'case_id': case.id, 'status': case.status}
 
-        notification_adapter.send_action_card(
+        outbox_msg = OutboxMessage(
+            message_id=str(uuid.uuid4()),
             farmer_phone=profile.phone_enc,
             channel='voice',
             content={'band': result['band'], 'drivers': result['drivers']}
         )
+        db.add(outbox_msg)
+        db.commit()
     else:
         db.commit()
     
