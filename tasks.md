@@ -35,10 +35,23 @@
 - [x] Added template-first driver narration with the upstream explanation preserved.
 - [x] Added M7 tests for draft-only behavior, consent gating, expiry rejection, PII redaction and prompt-injection sanitisation.
 
+### Mobile-first interface refresh — verified
+
+- [x] Reworked the farmer home screen into a compact status-first mobile layout with a fixed bottom navigation bar.
+- [x] Added a hybrid support-chat surface with quick replies, typed questions and safe fixture-backed responses.
+- [x] Added locale-aware farmer copy and localized next-step cards for English, Hindi and Marathi.
+- [x] Removed visible implementation labels from farmer and officer screens and replaced them with human task language.
+- [x] Reworked the officer queue into a mobile-responsive support workspace with clearer urgency, ownership and case-state labels.
+- [x] Added an editable officer copilot message review flow with explicit approval state before delivery integration.
+- [x] Refined shared surfaces, spacing, colors, focus states, bottom navigation and mobile breakpoints across both apps.
+- [x] Replaced visible fixture-source wording with user-facing source labels such as IMD rainfall feed, Agmarknet market feed and Sentinel-2 crop observation.
+
 ## Verification run
 
 - `make PYTHON=.venv/bin/python lint` — passed.
 - `make PYTHON=.venv/bin/python test` — 16 Python tests passed; all three frontend workspace test suites passed.
+- `npm run lint` — farmer PWA, officer dashboard and UI kit TypeScript checks passed.
+- `npm run test` — farmer PWA, officer dashboard and UI kit test suites passed.
 - `npm run build` — farmer PWA and officer dashboard production builds passed.
 
 ## Design-spec comparison

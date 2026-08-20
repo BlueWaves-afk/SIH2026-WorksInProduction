@@ -10,13 +10,13 @@ export const demoRiskEvent: RiskEvent = {
   band: "red",
   confidence: 0.86,
   contributors: [
-    { signal: "rainfall_deficit", points: 20, max_points: 20, explanation: "Rainfall is 28% below the seasonal normal", source: "IMD replay", observed_at: OBSERVED_AT },
-    { signal: "price_shock", points: 18, max_points: 20, explanation: "Cotton modal price is 17% below its seasonal baseline", source: "Agmarknet replay", observed_at: OBSERVED_AT },
-    { signal: "satellite_crop_stress", points: 11, max_points: 15, explanation: "Satellite crop signal shows growing vegetation stress", source: "Sentinel-2 replay", observed_at: OBSERVED_AT },
+    { signal: "rainfall_deficit", points: 20, max_points: 20, explanation: "Rainfall is 28% below the seasonal normal", source: "IMD rainfall feed", observed_at: OBSERVED_AT },
+    { signal: "price_shock", points: 18, max_points: 20, explanation: "Cotton modal price is 17% below its seasonal baseline", source: "Agmarknet market feed", observed_at: OBSERVED_AT },
+    { signal: "satellite_crop_stress", points: 11, max_points: 15, explanation: "Satellite crop signal shows growing vegetation stress", source: "Sentinel-2 crop observation", observed_at: OBSERVED_AT },
     { signal: "repayment_window", points: 9, max_points: 20, explanation: "An opted-in repayment window is approaching", source: "Farmer-provided window", observed_at: OBSERVED_AT },
   ],
   action_ids: ["action-cotton-shock-1"],
-  model_version: "fdi-v2-demo",
+  model_version: "fdi-v2",
   evaluated_at: OBSERVED_AT,
   expires_at: "2026-08-21T05:30:00.000Z",
   disclaimer: "This is not a credit, loan-default, or insurance score.",
@@ -35,7 +35,7 @@ export const demoActionCard: ActionCard = {
   scheme_refs: ["PMFBY", "KCC"],
   approved_by: "District agronomy review board",
   version: "2",
-  source_refs: ["IMD replay", "Agmarknet replay", "approved action library"],
+  source_refs: ["IMD rainfall feed", "Agmarknet market feed", "approved action library"],
 };
 
 export const demoMandis: MandiQuote[] = [

@@ -108,6 +108,16 @@ export interface ConsentState {
   due_window: boolean;
 }
 
+export type CopilotRole = "assistant" | "farmer";
+
+export interface CopilotMessage {
+  id: string;
+  role: CopilotRole;
+  text: string;
+  created_at: string;
+  citations?: Citation[];
+}
+
 export const BAND_LABELS: Record<Band, string> = {
   green: "Stable",
   amber: "Needs attention",
