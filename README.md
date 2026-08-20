@@ -273,8 +273,10 @@ flowchart LR
 
 ### Hosting (prototype)
 
+Live preview: [KisanSetu farmer PWA](https://sih-2026-works-in-production.vercel.app/)
+
 ```
-Frontend:  https://kisansetu-demo.vercel.app     (Vercel, static PWA)
+Frontend:  https://sih-2026-works-in-production.vercel.app     (Vercel, static PWA)
 Backend:   https://kisansetu-api.onrender.com     (Render, Docker + cron/worker for replay)
 Database:  private Supabase project               (Postgres + PostGIS + pgvector + Auth)
 Repository: GitHub
