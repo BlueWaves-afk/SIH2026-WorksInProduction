@@ -1,9 +1,0 @@
-{
-  "scenario": "normal",
-  "description": "Fresh, low-shock observations used as the green baseline",
-  "days": 90,
-  "signals": [
-    {"source": "imd", "metric": "rainfall_deviation_pct", "value": 2, "unit": "percent", "ttl_days": 2},
-    {"source": "agmarknet", "metric": "mandi_price_deviation_pct", "value": {"deviation_pct": 2, "below_msp": false}, "unit": "percent", "ttl_days": 3}
-  ]
-}

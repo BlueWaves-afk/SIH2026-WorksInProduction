@@ -1,9 +1,0 @@
-{
-  "scenario": "price_crash",
-  "description": "Mandi price crash without a rainfall shock",
-  "days": 90,
-  "signals": [
-    {"source": "imd", "metric": "rainfall_deviation_pct", "value": 2, "unit": "percent", "ttl_days": 2},
-    {"source": "agmarknet", "metric": "mandi_price_deviation_pct", "value": {"deviation_pct": -25, "below_msp": true}, "unit": "percent", "ttl_days": 3}
-  ]
-}
