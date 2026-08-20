@@ -58,6 +58,10 @@
 - [x] Rebuilt profile, language, privacy and consent screens in the same mobile design system.
 - [x] Reworked onboarding with a KisanSetu introduction, agricultural signal artwork and Shield-style controls while preserving consent defaults.
 - [x] Added navigation scroll restoration, keyboard focus treatment and responsive behavior for a 390×844 mobile viewport.
+- [x] Added project-local AI-generated imagery for the farmer profile, cotton stress, heavy rain, mandi market, pest watch and field-map surfaces, with text-free crops optimized for mobile cards.
+- [x] Added rainbow gradient rings around farmer/profile avatars, live alert thumbnails, timeline avatars and copilot field pins; verified the imagery and rings across home, alerts, profile and copilot screens at 390×844.
+- [x] Replaced onboarding crop, season and irrigation emojis with Lucide icons, changed selected farm options from black fills to rainbow-outline cards, and reset onboarding scroll to the top on each step.
+- [x] Replaced shield brand marks with the project-local transparent rainbow KisanSetu three-leaf logo across farmer home, onboarding and inner headers.
 
 ## Verification run
 

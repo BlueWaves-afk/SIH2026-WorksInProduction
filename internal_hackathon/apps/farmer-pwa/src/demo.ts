@@ -43,3 +43,22 @@ export const demoMandis: MandiQuote[] = [
   { mandi: "Lasalgaon", distance_km: 31, modal_price: 6480, change_pct: -11, verified_at: OBSERVED_AT },
   { mandi: "Nashik", distance_km: 42, modal_price: 6550, change_pct: -9, verified_at: OBSERVED_AT },
 ];
+
+export type AlertKind = "crop" | "rain" | "market" | "pest";
+
+export interface DemoAlert {
+  id: string;
+  title: string;
+  kind: AlertKind;
+  meta: string;
+  band: "red" | "amber" | "green";
+  span: "tall" | "short";
+}
+
+/** Alerts the farmer can choose from before opening a specific timeline. */
+export const demoAlerts: DemoAlert[] = [
+  { id: "cotton-stress", title: "Cotton Stress\nAlert", kind: "crop", meta: "Dindori · 74/100", band: "red", span: "tall" },
+  { id: "heavy-rain", title: "Heavy Rain\nWarning", kind: "rain", meta: "Nashik · next 48h", band: "amber", span: "short" },
+  { id: "market-drop", title: "Market Price\nDrop", kind: "market", meta: "Cotton · −17%", band: "amber", span: "short" },
+  { id: "pest-watch", title: "Pink Bollworm\nWatch", kind: "pest", meta: "3 villages nearby", band: "green", span: "tall" },
+];

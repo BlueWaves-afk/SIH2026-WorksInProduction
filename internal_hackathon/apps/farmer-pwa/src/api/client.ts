@@ -1,5 +1,6 @@
 import type { ActionCard, ConsentState, MandiQuote, RiskEvent } from "ui-kit";
 import { demoActionCard, demoMandis, demoRiskEvent } from "../demo";
+import { readCachedStatus, writeCachedStatus } from "../features/offline/statusCache";
 
 export interface FarmerProfileDraft {
   locale: "hi" | "mr" | "en";
@@ -9,12 +10,18 @@ export interface FarmerProfileDraft {
   consent_flags: ConsentState;
 }
 
-export interface FarmerStatus {
+interface StatusPayload {
   risk_event: RiskEvent;
   action_card: ActionCard;
   mandis: MandiQuote[];
+}
+
+/** Where the status on screen actually came from — surfaced to the farmer, never guessed. */
+export type StatusSource = "api" | "cache" | "demo-fixture";
+
+export interface FarmerStatus extends StatusPayload {
   cached_at: string;
-  source: "api" | "demo-fixture";
+  source: StatusSource;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -29,9 +36,20 @@ export async function submitFarmerProfile(draft: FarmerProfileDraft): Promise<vo
 
 export async function loadFarmerStatus(): Promise<FarmerStatus> {
   try {
-    const payload = await request<{ risk_event: RiskEvent; action_card: ActionCard; mandis: MandiQuote[] }>("/api/v1/risk-events?scope=farmer");
-    return { ...payload, cached_at: new Date().toISOString(), source: "api" };
+    const payload = await request<StatusPayload>("/api/v1/risk-events?scope=farmer");
+    const entry = writeCachedStatus(payload);
+    return { ...payload, cached_at: entry.cached_at, source: "api" };
   } catch {
-    return { risk_event: demoRiskEvent, action_card: demoActionCard, mandis: demoMandis, cached_at: new Date().toISOString(), source: "demo-fixture" };
+    // Offline or backend down: show the last status the farmer actually saw,
+    // labelled with its age. Only fall back to fixtures on a first-ever run.
+    const cached = readCachedStatus<StatusPayload>();
+    if (cached) return { ...cached.payload, cached_at: cached.cached_at, source: "cache" };
+    return {
+      risk_event: demoRiskEvent,
+      action_card: demoActionCard,
+      mandis: demoMandis,
+      cached_at: new Date().toISOString(),
+      source: "demo-fixture",
+    };
   }
 }
