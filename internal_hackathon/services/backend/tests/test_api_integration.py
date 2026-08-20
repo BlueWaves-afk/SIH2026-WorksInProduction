@@ -6,8 +6,11 @@ from fastapi.testclient import TestClient
 
 from adapters.core.interfaces import ObservationPayload
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.integrations.live_data import LiveFetchResult
 from app.main import app
+from app.models.case import AlertCase
+from adapters.sources.registry import build_registry
 
 
 def _profile(token: str = "farmer-integration") -> dict:
@@ -169,3 +172,58 @@ def test_live_recalculate_persists_provider_observations_before_scoring(monkeypa
         assert response.status_code == 201
         event = response.json()
         assert {item["source"] for item in event["contributors"]} >= {"IMD", "agmarknet"}
+
+
+def test_recalculation_projects_one_open_case_and_cohort_analytics_is_suppressed():
+    with TestClient(app) as client:
+        token = "farmer-projection"
+        assert client.post("/api/v1/farmer-profiles", json=_profile(token)).status_code == 201
+        replay = client.post("/api/v1/replay/scenario", json={"farmer_token": token, "scenario": "rainfall_shock"})
+        assert replay.status_code == 200
+        first_case_id = str(replay.json()["case"]["case_id"])
+        recalculated = client.post("/api/v1/risk-events/recalculate", json={"farmer_token": token})
+        assert recalculated.status_code == 201
+        cases = client.get("/api/v1/cases").json()["items"]
+        assert [item["case_id"] for item in cases].count(first_case_id) == 1
+        analytics = client.get("/api/v1/analytics/district")
+        assert analytics.status_code == 200
+        assert analytics.json()["suppressed"] is True
+
+
+def test_observation_boundary_rejects_sensitive_and_malformed_values():
+    with TestClient(app) as client:
+        assert client.post("/api/v1/farmer-profiles", json=_profile("farmer-validation")).status_code == 201
+        banned = client.post(
+            "/api/v1/observations",
+            json={"farmer_token": "farmer-validation", "source": "farmer_report", "observed_at": "2026-06-01T00:00:00Z", "metric": "credit_score", "value": 10},
+        )
+        assert banned.status_code == 422
+        malformed = client.post(
+            "/api/v1/observations",
+            json={"farmer_token": "farmer-validation", "source": "imd", "observed_at": "2026-06-01T00:00:00Z", "metric": "rainfall_deviation_pct", "value": 9999},
+        )
+        assert malformed.status_code == 422
+
+
+def test_all_canonical_sources_are_registered_without_credentials():
+    registry = build_registry({})
+    expected = {"imd", "agmarknet", "agristack", "bhashini", "bhuvan", "msp", "sentinel2", "soil"}
+    assert set(registry.sources()) == expected
+
+
+def test_sla_scanner_persists_breach_and_queue_exposes_it():
+    token = "farmer-sla"
+    with TestClient(app) as client:
+        assert client.post("/api/v1/farmer-profiles", json=_profile(token)).status_code == 201
+        replay = client.post("/api/v1/replay/scenario", json={"farmer_token": token, "scenario": "rainfall_shock"})
+        assert replay.status_code == 200
+        with SessionLocal() as db:
+            case = db.query(AlertCase).filter(AlertCase.farmer_token == token).first()
+            assert case is not None
+            case.sla_due_at = datetime.utcnow() - timedelta(minutes=1)
+            db.commit()
+        scan = client.post("/api/v1/cases/sla/scan")
+        assert scan.status_code == 200
+        assert scan.json()["breached"] == 1
+        listed = client.get("/api/v1/cases").json()["items"]
+        assert any(item["farmer_token"] == token and item["sla_breached"] is True for item in listed)

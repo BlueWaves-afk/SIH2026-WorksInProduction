@@ -14,7 +14,8 @@ from app.schemas import Page, RecalculateRequest, RiskEvent as RiskEventSchema
 from app.security import AuthContext, authorize_farmer_profile, require_roles
 from app.security.audit import record_audit
 from app.integrations.live_data import LiveIngestionError, sync_profile_observations
-from app.services.scoring import compute_for_profile, persist_risk_event
+from app.services.scoring import compute_for_profile
+from app.services.workflow import persist_event_with_workflow
 
 router = APIRouter()
 
@@ -61,7 +62,7 @@ def recalculate_risk_event(
             db.rollback()
             raise HTTPException(status_code=503, detail=str(exc)) from exc
     event = compute_for_profile(db, profile, as_of=payload.as_of)
-    row = persist_risk_event(db, event)
+    row, _ = persist_event_with_workflow(db, profile, event, actor=actor)
     record_audit(db, actor=actor, action="risk_event.recalculate", target_id=event.event_id, details={"band": event.band, "score": event.score})
     db.commit()
     db.refresh(row)

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from sqlalchemy import case as sql_case, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -13,18 +13,27 @@ from app.schemas import AlertCase, CaseResolveRequest, CaseStatus, CaseTransitio
 from app.security import AuthContext, require_roles
 from app.security.audit import record_audit
 from app.models.geo import Village
+from app.services.sla import scan_sla_breaches
 
 router = APIRouter()
 
 
 ALLOWED_TRANSITIONS = {
-    "new": {"acknowledged", "referred", "resolved"},
+    "new": {"acknowledged", "referred"},
     "acknowledged": {"visited", "referred", "resolved"},
     "visited": {"referred", "resolved"},
     "referred": {"visited", "resolved"},
     "resolved": set(),
 }
 RESOLUTION_CODES = {"supported", "referred", "visited", "unable_to_reach", "false_positive", "duplicate"}
+
+
+@router.post("/sla/scan")
+def scan_case_slas(
+    db: Session = Depends(get_db),
+    actor: AuthContext = Depends(require_roles("district_admin", "admin", "auditor")),
+):
+    return scan_sla_breaches(db, actor=actor)
 
 
 def _authorize_case(case: AlertCaseRow, actor: AuthContext, db: Session) -> None:
@@ -53,6 +62,8 @@ def _case_response(case: AlertCaseRow) -> AlertCase:
         sent_at=case.sent_at,
         ack_at=case.ack_at,
         sla_due_at=case.sla_due_at,
+        sla_breached=str(case.sla_breached).lower() == "true",
+        sla_breached_at=case.sla_breached_at,
         resolution_code=case.resolution_code,
         notes=case.notes,
     )
@@ -71,6 +82,8 @@ def _transition(case: AlertCaseRow, target: str, actor: AuthContext, db: Session
         case.assigned_to = case.assigned_to or actor.principal
     if notes:
         case.notes = notes
+    if target == "resolved":
+        case.resolved_at = datetime.utcnow()
     record_audit(db, actor=actor, action=f"case.{target}", target_id=str(case.id), details={"from": current, "reason": reason})
 
 
@@ -108,7 +121,13 @@ def list_cases(
         # them becomes the owner; assigned cases are private to that officer.
         query = query.filter(or_(AlertCaseRow.assigned_to.is_(None), AlertCaseRow.assigned_to == actor.principal))
     total = query.count()
-    rows = query.order_by(AlertCaseRow.sla_due_at.asc(), AlertCaseRow.created_at.desc()).offset(offset).limit(limit).all()
+    urgency = sql_case(
+        (AlertCaseRow.band == "red", 0),
+        (AlertCaseRow.band == "amber", 1),
+        else_=2,
+    )
+    breach = sql_case((AlertCaseRow.sla_breached == "true", 0), else_=1)
+    rows = query.order_by(urgency.asc(), breach.asc(), AlertCaseRow.confidence.desc(), AlertCaseRow.created_at.asc()).offset(offset).limit(limit).all()
     return Page[AlertCase](items=[_case_response(row) for row in rows], total=total, limit=limit, offset=offset)
 
 

@@ -5,6 +5,7 @@ from app.core.database import SessionLocal
 from app.services.delivery import process_outbox as process_outbox_once
 from app.services.outreach import run_outreach_cycle
 from app.services.retention import run_retention_cycle
+from app.services.sla import scan_sla_breaches
 
 logger = structlog.get_logger()
 
@@ -27,6 +28,15 @@ def process_outreach():
         db.close()
 
 
+def process_sla():
+    db = SessionLocal()
+    try:
+        result = scan_sla_breaches(db)
+        logger.info("sla_cycle_complete", **result)
+    finally:
+        db.close()
+
+
 def process_retention():
     db = SessionLocal()
     try:
@@ -40,6 +50,7 @@ def start_scheduler():
     scheduler = BackgroundScheduler(daemon=True)
     scheduler.add_job(process_outbox, "interval", minutes=1, id="outbox", replace_existing=True)
     scheduler.add_job(process_outreach, "interval", minutes=5, id="outreach", replace_existing=True)
+    scheduler.add_job(process_sla, "interval", minutes=5, id="sla", replace_existing=True)
     scheduler.add_job(process_retention, "interval", hours=24, id="retention", replace_existing=True)
     scheduler.start()
     logger.info("outreach_scheduler_started")

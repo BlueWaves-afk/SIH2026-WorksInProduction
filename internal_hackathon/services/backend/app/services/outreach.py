@@ -8,8 +8,6 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.audit import AuditEvent
-from app.models.case import AlertCase
 from app.models.farmer import FarmerProfile
 from app.models.outbox import OutboxMessage
 from app.models.risk import RiskEvent
@@ -53,11 +51,6 @@ def run_outreach_cycle(db: Session, *, now: datetime | None = None, actor: AuthC
     created = skipped = 0
     decisions: list[dict] = []
     profiles = db.query(FarmerProfile).all()
-    open_cases = db.query(AlertCase).filter(AlertCase.status.in_(["new", "acknowledged", "visited", "referred"]), AlertCase.sla_due_at.isnot(None), AlertCase.sla_due_at < now).all()
-    for case in open_cases:
-        prior = db.query(AuditEvent).filter_by(action="case.sla_breach", target_id=str(case.id)).first()
-        if not prior:
-            record_audit(db, actor=system_actor, action="case.sla_breach", target_id=str(case.id), details={"sla_due_at": case.sla_due_at.isoformat() if case.sla_due_at else None})
     for profile in profiles:
         events = (
             db.query(RiskEvent)

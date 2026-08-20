@@ -13,7 +13,7 @@ router = APIRouter()
 def _sources(values: list[str]) -> list[str]:
     selected = [value.strip().lower() for value in values]
     if not selected or any(value not in LIVE_SOURCES for value in selected):
-        raise HTTPException(status_code=422, detail="sources must contain only imd or agmarknet")
+        raise HTTPException(status_code=422, detail=f"sources must contain only {', '.join(LIVE_SOURCES)}")
     return list(dict.fromkeys(selected))
 
 

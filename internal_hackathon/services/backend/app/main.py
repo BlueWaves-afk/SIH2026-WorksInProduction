@@ -151,8 +151,31 @@ def health_check():
 
 @app.get("/readyz", tags=["health"])
 def readiness_check():
-    ready = check_database()
-    return JSONResponse(status_code=200 if ready else 503, content={"status": "ready" if ready else "not_ready", "database": ready})
+    database_ready = check_database()
+    adapter_rows: list[dict] = []
+    adapters_ready = True
+    if settings.live_data_enabled:
+        try:
+            from app.integrations.live_data import adapter_health
+
+            adapter_rows = adapter_health()
+            adapters_ready = all(
+                item["mode"] == "real" and item["configured"] and item["health"].get("ok", False)
+                for item in adapter_rows
+            )
+        except Exception as exc:  # pragma: no cover - defensive startup path
+            adapters_ready = False
+            adapter_rows = [{"source": "registry", "error": str(exc).split("?", 1)[0][:160]}]
+    ready = database_ready and adapters_ready
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={
+            "status": "ready" if ready else "not_ready",
+            "database": database_ready,
+            "adapters": adapters_ready,
+            "adapter_sources": adapter_rows,
+        },
+    )
 
 
 app.include_router(api_router, prefix=settings.api_v1_str)

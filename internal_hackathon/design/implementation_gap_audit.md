@@ -1,4 +1,12 @@
-# Implementation Gap Audit
+# Historical Implementation Gap Audit
+
+> **Status note (21 Aug 2026):** this document is the pre-integration baseline
+> captured before the unified backend, frontend journeys, live weather/market
+> adapters, identity controls, case workflow and outreach slices were built.
+> It is retained as historical review evidence. For the current implemented
+> state, use the repository-root [`tasks.md`](../../tasks.md), the unified
+> backend ADR, and CI verification. Do not use the status table below as a
+> current backlog without rechecking the code.
 
 What the design docs specify vs. what exists in code, as of **21 Aug 2026**.
 

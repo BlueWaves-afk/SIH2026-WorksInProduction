@@ -19,10 +19,12 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.farmer import FarmerProfile
 from app.models.observation import Observation
+from app.services.observation_validation import validate_observation
 
 
-LIVE_SOURCES = ("imd", "agmarknet")
-SourceName = Literal["imd", "agmarknet"]
+ADAPTER_SOURCES = ("imd", "agmarknet", "agristack", "bhashini", "bhuvan", "msp", "sentinel2", "soil")
+LIVE_SOURCES = ("imd", "agmarknet", "bhuvan", "msp", "sentinel2", "soil")
+SourceName = Literal["imd", "agmarknet", "bhuvan", "msp", "sentinel2", "soil"]
 
 
 class LiveIngestionError(RuntimeError):
@@ -46,6 +48,23 @@ def _registry():
         "IMD_API_KEY": settings.imd_api_key or "",
         "AGMARKNET_ENDPOINT": settings.agmarknet_endpoint or "",
         "AGMARKNET_API_KEY": settings.agmarknet_api_key or "",
+        "ADAPTER_MODE_AGRISTACK": settings.adapter_mode_agristack,
+        "ADAPTER_MODE_BHASHINI": settings.adapter_mode_bhashini,
+        "ADAPTER_MODE_BHUVAN": settings.adapter_mode_bhuvan,
+        "ADAPTER_MODE_MSP": settings.adapter_mode_msp,
+        "ADAPTER_MODE_SENTINEL2": settings.adapter_mode_sentinel2,
+        "ADAPTER_MODE_SOIL": settings.adapter_mode_soil,
+        "AGRISTACK_ENDPOINT": settings.agristack_endpoint or "",
+        "BHASHINI_ENDPOINT": settings.bhashini_endpoint or "",
+        "BHUVAN_ENDPOINT": settings.bhuvan_endpoint or "",
+        "MSP_ENDPOINT": settings.msp_endpoint or "",
+        "SENTINEL2_ENDPOINT": settings.sentinel2_endpoint or "",
+        "SOIL_ENDPOINT": settings.soil_endpoint or "",
+        "AGRISTACK_API_KEY": settings.agristack_api_key or "",
+        "BHUVAN_API_KEY": settings.bhuvan_api_key or "",
+        "MSP_API_KEY": settings.msp_api_key or "",
+        "SENTINEL2_API_KEY": settings.sentinel2_api_key or "",
+        "SOIL_API_KEY": settings.soil_api_key or "",
         "LIVE_ADAPTER_TIMEOUT_SECONDS": str(settings.live_adapter_timeout_seconds),
     }
     return build_registry(environ)
@@ -75,7 +94,9 @@ def _request(
 
 def adapter_health(*, sources: list[SourceName] | None = None) -> list[dict[str, Any]]:
     registry = _registry()
-    selected = sources or list(LIVE_SOURCES)
+    selected = sources or settings.live_signal_source_list
+    if any(source not in ADAPTER_SOURCES for source in selected):
+        raise LiveIngestionError("unsupported live source requested")
     result: list[dict[str, Any]] = []
     for source in selected:
         adapter = registry.get(source)
@@ -112,7 +133,9 @@ def fetch_live(
         end_date=end_date,
     )
     registry = _registry()
-    selected = sources or list(LIVE_SOURCES)
+    selected = sources or settings.live_signal_source_list
+    if any(source not in LIVE_SOURCES for source in selected):
+        raise LiveIngestionError("unsupported live source requested")
     observations: list[ObservationPayload] = []
     source_rows: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
@@ -169,7 +192,7 @@ def sync_profile_observations(
         district_id=None,
         commodity=profile.crop,
         end_date=effective_as_of.date(),
-        sources=list(LIVE_SOURCES),
+        sources=settings.live_signal_source_list,
     )
     if result.errors:
         failed = ", ".join(item["source"] for item in result.errors)
@@ -177,6 +200,12 @@ def sync_profile_observations(
 
     persisted: list[Observation] = []
     for payload in result.observations:
+        validate_observation(
+            source=payload.source,
+            metric=payload.metric,
+            value=payload.value,
+            ttl_seconds=max(1, int(payload.ttl.total_seconds())),
+        )
         observed_at = payload.observed_at.replace(tzinfo=None)
         duplicate = (
             db.query(Observation)
@@ -211,6 +240,7 @@ def sync_profile_observations(
 
 __all__ = [
     "LIVE_SOURCES",
+    "ADAPTER_SOURCES",
     "LiveFetchResult",
     "LiveIngestionError",
     "adapter_health",

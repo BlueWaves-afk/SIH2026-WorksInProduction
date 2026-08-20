@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.models.history import DeliveryAttempt
 from app.models.outbox import OutboxMessage
 from app.models.farmer import FarmerProfile
+from app.models.risk import RiskEvent
 from app.adapters.notification import MockNotificationAdapter
 from app.security import decrypt_phone
 
@@ -44,6 +45,13 @@ def process_outbox(db: Session, *, now: datetime | None = None, limit: int = 50)
             message.status = "cancelled_consent"
             db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="cancelled_consent", error="contact consent withdrawn"))
             continue
+        event_id = (message.content or {}).get("event_id") if isinstance(message.content, dict) else None
+        if event_id:
+            event = db.query(RiskEvent).filter(RiskEvent.event_id == event_id).first()
+            if event and event.expires_at and event.expires_at < now:
+                message.status = "suppressed_stale"
+                db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="suppressed_stale", error="risk event expired before delivery"))
+                continue
         try:
             destination = decrypt_phone(message.farmer_phone) or message.farmer_phone
             result = adapter.send_action_card(destination, message.channel, message.content or {})

@@ -1,7 +1,8 @@
 # Live data integration (implemented)
 
-KisanSetu now has one live-ingestion boundary for the first two external FDI
-signals:
+KisanSetu now has one live-ingestion boundary for external FDI signal sources.
+Weather and market are the default production slice; Bhuvan, MSP, Sentinel-2
+and soil can be enabled one at a time with the same canonical contract:
 
 - **S1/S2 weather:** `IMDRealAdapter` parses the official IMD district-rainfall
   shape (`Daily Actual`, `Daily Normal`, `Daily Departure Per`) and can also
@@ -11,6 +12,9 @@ signals:
   explicit seasonal baseline, direct deviation, MSP, and below-MSP flag.  A
   single quote is never treated as a baseline.  The market dataset is published
   through the [India Open Government Data catalog](https://data.gov.in/catalog/current-daily-price-various-commodities-various-markets-mandi).
+- **S3/S12 supporting sources:** Bhuvan, MSP, Sentinel-2 and soil accept
+  canonical observation rows from an approved department proxy. Their native
+  provider fields must be mapped and validated before they are enabled.
 
 ## Runtime contract
 
@@ -24,6 +28,7 @@ Live mode is intentionally opt-in:
 
 ```dotenv
 LIVE_DATA_ENABLED=true
+LIVE_SIGNAL_SOURCES=imd,agmarknet
 ADAPTER_MODE_IMD=real
 ADAPTER_MODE_AGMARKNET=real
 IMD_ENDPOINT=https://api.imd.gov.in/api/v1/districtrainfall
@@ -33,10 +38,12 @@ AGMARKNET_API_KEY=
 LIVE_ADAPTER_TIMEOUT_SECONDS=10
 ```
 
-The endpoint and keys are server-side settings.  They must never be exposed to
-the browser or committed to Git.  Until the flag and both real adapter modes
-are configured, `/api/v1/ingestion/preview` reports the source as unavailable
-and the existing deterministic replay remains the only scoring input.
+The endpoint and keys are server-side settings. They must never be exposed to
+the browser or committed to Git. Until the flag and every selected real
+adapter mode are configured, `/api/v1/ingestion/preview` reports the source as
+unavailable and the existing deterministic replay remains the only scoring
+input. AgriStack profile prefill and Bhashini voice are separate
+health-checked contracts, not generic FDI signal sources.
 
 ## API hooks
 
@@ -45,8 +52,8 @@ and the existing deterministic replay remains the only scoring input.
 - `POST /api/v1/ingestion/preview` — officer/admin-only, returns parsed rows,
   freshness metadata, and sanitised provider errors without persisting data.
 - `POST /api/v1/risk-events/recalculate` with
-  `{ "farmer_token": "…", "source_mode": "live" }` — fetches IMD and
-  AGMARKNET, de-duplicates observations, persists them, and invokes the FDI
+  `{ "farmer_token": "…", "source_mode": "live" }` — fetches the selected
+  signal sources, de-duplicates observations, persists them, and invokes the FDI
   engine.  Any source failure returns `503`; it never falls back silently to a
   fixture.
 

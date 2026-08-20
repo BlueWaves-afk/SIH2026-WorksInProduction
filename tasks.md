@@ -98,6 +98,13 @@
 - [x] Added a canonical FDI facade for legacy scorer imports; old v1 rules are no longer executable.
 - [x] Added error envelopes for HTTP/validation failures and fixed Alembic URL handling for Supabase async URLs.
 - [x] Added SQLite-safe PostGIS migration guards and verified `alembic upgrade head` on a local fixture.
+- [x] Added a single live-signal source registry for IMD, AGMARKNET, Bhuvan, MSP, Sentinel-2 and soil, with the profile/voice adapters kept on their separate contracts.
+- [x] Added canonical observation boundary validation for source, TTL, numeric ranges, due-window shape, reports and banned privacy fields.
+- [x] Added one score-to-workflow projection used by replay and recalculation, with open-case deduplication, case-history refreshes and consent/idempotent outbox creation.
+- [x] Added durable SLA breach fields, a breach scanner endpoint, ranked Red/SLA-first queues and scheduled SLA scans.
+- [x] Added n≥10 analytics suppression using storage + analytics consent and returned an explicit suppressed state for small cohorts.
+- [x] Added stale-event suppression at outbox delivery, manual dispatch caps/idempotency, validated provider statuses and inbound event deduplication.
+- [x] Added deployment configuration handoff documentation covering Supabase, Vercel, Render and live-source activation order.
 - [x] Added case deduplication, assignment on acknowledgement, SLA breach audit, reopen policy and an outreach cycle endpoint.
 - [x] Added consent-aware band-change/sustained-Red outreach, quiet-hours fallback, daily caps, inbound SMS/missed-call/IVR handling and signed provider webhooks.
 - [x] Added scheduled retention cleanup for old observations and completed outbox messages while retaining audit history.
@@ -107,7 +114,7 @@
 ## Verification run
 
 - `make PYTHON=.venv/bin/python lint` — passed.
-- Full Python package test run — 56 tests passed with an isolated SQLite database.
+- Full Python package test run — 65 tests passed with an isolated SQLite database.
 - `npm run lint` — farmer PWA, officer dashboard and UI kit TypeScript checks passed.
 - `npm run test` — farmer PWA, officer dashboard and UI kit test suites passed.
 - `npm run build` — farmer PWA and officer dashboard production builds passed.
@@ -117,6 +124,7 @@
 - CI now installs the unified backend, runs the monorepo checks and executes both Playwright journeys.
 - Unified backend tests — 9 tests passed, including Auth ownership, role-claim and district-isolation cases.
 - Alembic migration smoke test — initial schema through the unified backend revision passed on SQLite; PostGIS geometry is enabled only on PostgreSQL/Supabase.
+- SLA migration smoke test — the case breach/resolution revision applies cleanly through Alembic on SQLite.
 
 ## Design-spec comparison
 

@@ -9,6 +9,7 @@ from app.models.observation import Observation
 from app.schemas import ObservationCreate
 from app.security import AuthContext, authorize_farmer_profile, require_roles
 from app.security.audit import record_audit
+from app.services.observation_validation import validate_observation
 
 router = APIRouter()
 
@@ -26,6 +27,7 @@ def create_observation(
     flags = profile.consent_flags or {}
     if not bool(flags.get("store_data", flags.get("storage", False))):
         raise HTTPException(status_code=403, detail="Storage consent is required")
+    validate_observation(source=payload.source, metric=payload.metric, value=payload.value, ttl_seconds=payload.ttl_seconds)
     row = Observation(
         farmer_token=payload.farmer_token,
         source=payload.source,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, time
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -16,6 +16,7 @@ from app.models.farmer import FarmerProfile
 from app.models.history import DeliveryAttempt
 from app.models.outbox import OutboxMessage
 from app.models.observation import Observation
+from app.models.risk import RiskEvent
 from app.schemas import NotificationDispatchRequest
 from app.security import AuthContext, require_roles
 from app.security.audit import record_audit
@@ -38,9 +39,26 @@ def dispatch_notification(
     flags = profile.consent_flags or {}
     if not bool(flags.get("contact_me", flags.get("contact", False))) or not bool(flags.get("store_data", flags.get("storage", False))):
         raise HTTPException(status_code=403, detail="Contact consent is required")
+    idem = f"case:{case.id}:manual:{payload.channel}"
+    existing = db.query(OutboxMessage).filter(OutboxMessage.idempotency_key == idem).first()
+    if existing:
+        return {"message_id": existing.message_id, "status": existing.status, "channel": existing.channel, "deduplicated": True}
+    day_start = datetime.combine(datetime.utcnow().date(), time.min)
+    sent_today = (
+        db.query(DeliveryAttempt)
+        .join(OutboxMessage, OutboxMessage.message_id == DeliveryAttempt.message_id)
+        .filter(
+            OutboxMessage.farmer_token == case.farmer_token,
+            DeliveryAttempt.status == "sent",
+            DeliveryAttempt.attempted_at >= day_start,
+        )
+        .count()
+    )
+    if sent_today >= settings.outreach_daily_cap:
+        raise HTTPException(status_code=429, detail="Daily contact cap reached for this farmer")
     message = OutboxMessage(
         message_id=str(uuid4()),
-        idempotency_key=f"case:{case.id}:manual:{payload.channel}",
+        idempotency_key=idem,
         farmer_token=case.farmer_token,
         farmer_phone=profile.phone_enc,
         channel=payload.channel,
@@ -81,9 +99,14 @@ def provider_webhook(
     message = db.query(OutboxMessage).filter(OutboxMessage.message_id == message_id).first()
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
-    status = str(payload.get("status", "unknown"))
+    status = str(payload.get("status", "unknown")).lower()
+    if status not in {"queued", "sent", "delivered", "failed", "dead_letter", "cancelled", "suppressed"}:
+        raise HTTPException(status_code=422, detail="Unsupported provider delivery status")
+    provider_reference = str(payload.get("provider_reference") or "")
+    if provider_reference and db.query(DeliveryAttempt).filter(DeliveryAttempt.provider_reference == provider_reference).first():
+        return {"message_id": message_id, "status": message.status, "deduplicated": True}
     message.status = status
-    db.add(DeliveryAttempt(message_id=message_id, channel=message.channel, status=status, provider_reference=payload.get("provider_reference"), error=payload.get("error")))
+    db.add(DeliveryAttempt(message_id=message_id, channel=message.channel, status=status, provider_reference=provider_reference or None, error=payload.get("error")))
     db.commit()
     return {"message_id": message_id, "status": status}
 
@@ -109,12 +132,17 @@ def inbound_webhook(
     if not profile:
         raise HTTPException(status_code=404, detail="Farmer profile not found")
     event_type = str(payload.get("event_type", "sms")).lower()
+    inbound_id = str(payload.get("message_id") or "")
+    if inbound_id and db.query(Observation).filter(Observation.source == "outreach_inbound", Observation.metric == "inbound_event_id", Observation.value == inbound_id).first():
+        return {"status": "duplicate", "farmer_token": farmer_token, "event_type": event_type}
     flags = dict(profile.consent_flags or {})
     if event_type == "sms" and str(payload.get("text", "")).strip().upper() in {"STOP", "UNSUBSCRIBE"}:
         flags["contact_me"] = False
         profile.consent_flags = flags
         db.add(ConsentLedger(farmer_token=farmer_token, action="WITHDRAW", purpose="contact_me", proof={"source": "provider_webhook"}))
         db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="outreach_unanswered", value="contact withdrawn", unit="", quality="good", ttl=2592000))
+        if inbound_id:
+            db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="inbound_event_id", value=inbound_id, unit="", quality="good", ttl=2592000))
         db.commit()
         return {"status": "contact_withdrawn", "farmer_token": farmer_token}
     if not bool(flags.get("store_data", flags.get("storage", False))):
@@ -122,9 +150,15 @@ def inbound_webhook(
     if event_type in {"sms", "ivr"}:
         text_value = str(payload.get("text") or payload.get("keypress") or "REQUEST_HELP")[:280]
         db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="acute_farmer_report", value=text_value, unit="", quality="good", ttl=172800))
+        if inbound_id:
+            db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="inbound_event_id", value=inbound_id, unit="", quality="good", ttl=2592000))
     elif event_type == "missed_call":
         if bool(flags.get("contact_me", flags.get("contact", False))):
-            db.add(OutboxMessage(message_id=str(uuid4()), idempotency_key=f"callback:{farmer_token}:{payload.get('message_id', 'unknown')}", farmer_token=farmer_token, farmer_phone=profile.phone_enc, channel="voice", content={"type": "callback_request", "source": "missed_call"}, status="pending", consent_required="contact"))
+            callback_idem = f"callback:{farmer_token}:{payload.get('message_id', 'unknown')}"
+            if not db.query(OutboxMessage).filter(OutboxMessage.idempotency_key == callback_idem).first():
+                db.add(OutboxMessage(message_id=str(uuid4()), idempotency_key=callback_idem, farmer_token=farmer_token, farmer_phone=profile.phone_enc, channel="voice", content={"type": "callback_request", "source": "missed_call"}, status="pending", consent_required="contact"))
+            if inbound_id:
+                db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="inbound_event_id", value=inbound_id, unit="", quality="good", ttl=2592000))
     else:
         raise HTTPException(status_code=422, detail="event_type must be sms, missed_call, or ivr")
     db.commit()

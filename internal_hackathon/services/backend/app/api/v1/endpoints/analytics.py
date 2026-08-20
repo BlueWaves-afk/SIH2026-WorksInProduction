@@ -10,6 +10,7 @@ from app.models.case import AlertCase
 from app.models.farmer import FarmerProfile
 from app.models.risk import RiskEvent
 from app.security import AuthContext, require_roles
+from identity_consent.policy.guardrails import enforce_cohort_suppression
 
 router = APIRouter()
 
@@ -24,7 +25,12 @@ def district_analytics(
     # geography table.  The demo fallback still returns useful global metrics.
     events = db.query(RiskEvent)
     cases = db.query(AlertCase)
-    stored_tokens = [profile.farmer_token for profile in db.query(FarmerProfile).all() if bool((profile.consent_flags or {}).get("store_data", (profile.consent_flags or {}).get("storage", False)))]
+    stored_tokens = [
+        profile.farmer_token
+        for profile in db.query(FarmerProfile).all()
+        if bool((profile.consent_flags or {}).get("store_data", (profile.consent_flags or {}).get("storage", False)))
+        and bool((profile.consent_flags or {}).get("use_analytics", (profile.consent_flags or {}).get("analytics", False)))
+    ]
     events = events.filter(RiskEvent.farmer_token.in_(stored_tokens or ["__none__"]))
     cases = cases.filter(AlertCase.farmer_token.in_(stored_tokens or ["__none__"]))
     effective_district = actor.district_id if actor.role in {"extension_officer", "district_admin"} and actor.district_id else district_id
@@ -40,6 +46,26 @@ def district_analytics(
             village_ids = []
         events = events.filter(RiskEvent.village_id.in_(village_ids or ["__none__"]))
         cases = cases.filter(AlertCase.village_id.in_(village_ids or ["__none__"]))
+    cohort_size = len(stored_tokens)
+    if effective_district:
+        try:
+            district_tokens = [
+                profile.farmer_token
+                for profile in db.query(FarmerProfile).filter(FarmerProfile.farmer_token.in_(stored_tokens or ["__none__"])).all()
+                if profile.village_id in set(village_ids)
+            ]
+            cohort_size = len(district_tokens)
+        except SQLAlchemyError:
+            cohort_size = 0
+    try:
+        enforce_cohort_suppression(cohort_size)
+    except PermissionError:
+        return {
+            "district_id": effective_district,
+            "suppressed": True,
+            "suppression_reason": "cohort_below_minimum",
+            "hotspots": [],
+        }
     hotspot_rows = (
         cases.with_entities(
             AlertCase.village_id,
@@ -75,6 +101,8 @@ def district_analytics(
         )
     return {
         "district_id": effective_district,
+        "suppressed": False,
+        "cohort_size": cohort_size,
         "risk_events": events.count(),
         "red_events": events.filter(RiskEvent.band == "red").count(),
         "amber_events": events.filter(RiskEvent.band == "amber").count(),

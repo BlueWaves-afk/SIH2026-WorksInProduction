@@ -19,6 +19,8 @@ human agriculture officer who closes the loop.
 Start with [`design/masterspecv1.md`](design/masterspecv1.md), then
 [`design/module_0_architecture_overview.md`](design/module_0_architecture_overview.md)
 (module map, shared contracts, cross-module decisions). Each module has its own spec.
+Deployment variables and the Supabase/Vercel/Render handoff are recorded in
+[`design/deployment_configuration.md`](design/deployment_configuration.md).
 
 ## Module map
 

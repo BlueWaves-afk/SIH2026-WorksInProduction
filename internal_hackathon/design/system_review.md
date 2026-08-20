@@ -1,5 +1,11 @@
 # Full-system review — internal hackathon baseline
 
+> **Current-state note:** this review records risks and decisions from the
+> pre-integration design pass. The executable implementation and verification
+> status now live in the repository-root [`tasks.md`](../../tasks.md); the
+> unresolved external dependencies (Supabase/provider credentials) remain
+> intentionally configuration-gated.
+
 **Review date:** 19 August 2026<br>
 **Scope:** `masterspecv1.md`, Module 0, and Modules 1–8 in this folder<br>
 **Review type:** architecture, contract, privacy/security, operational, hosting, and delivery-readiness review

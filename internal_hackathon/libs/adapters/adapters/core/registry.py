@@ -25,6 +25,10 @@ class AdapterRegistry:
         except KeyError as exc:
             raise KeyError(f"no adapter registered for {source!r}") from exc
 
+    def sources(self) -> tuple[str, ...]:
+        """Return registered source names for diagnostics and readiness checks."""
+        return tuple(sorted(self._adapters))
+
     def configured_mode(
         self, source: str, environ: dict[str, str] | None = None
     ) -> AdapterMode:

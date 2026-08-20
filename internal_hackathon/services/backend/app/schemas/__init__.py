@@ -71,6 +71,8 @@ class AlertCase(BaseModel):
     sent_at: datetime | None = None
     ack_at: datetime | None = None
     sla_due_at: datetime | None = None
+    sla_breached: bool = False
+    sla_breached_at: datetime | None = None
     resolution_code: str | None = None
     notes: str | None = None
 

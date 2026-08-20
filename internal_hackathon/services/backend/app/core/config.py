@@ -52,8 +52,26 @@ class Settings(BaseSettings):
     live_adapter_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
     imd_endpoint: str | None = None
     agmarknet_endpoint: str | None = None
+    agristack_endpoint: str | None = None
+    bhashini_endpoint: str | None = None
+    bhuvan_endpoint: str | None = None
+    msp_endpoint: str | None = None
+    sentinel2_endpoint: str | None = None
+    soil_endpoint: str | None = None
     adapter_mode_imd: str = "mock"
     adapter_mode_agmarknet: str = "mock"
+    adapter_mode_agristack: str = "mock"
+    adapter_mode_bhashini: str = "mock"
+    adapter_mode_bhuvan: str = "mock"
+    adapter_mode_msp: str = "mock"
+    adapter_mode_sentinel2: str = "mock"
+    adapter_mode_soil: str = "mock"
+    agristack_api_key: str | None = None
+    bhuvan_api_key: str | None = None
+    msp_api_key: str | None = None
+    sentinel2_api_key: str | None = None
+    soil_api_key: str | None = None
+    live_signal_sources: str = "imd,agmarknet"
     shadow_ml_enabled: bool = False
 
     model_config = SettingsConfigDict(
@@ -66,6 +84,19 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+
+    @property
+    def live_signal_source_list(self) -> list[str]:
+        # AgriStack profile prefill and Bhashini voice are separate contracts;
+        # they are health-checked but are not signal rows for the FDI scorer.
+        allowed = {"imd", "agmarknet", "bhuvan", "msp", "sentinel2", "soil"}
+        selected = [item.strip().lower() for item in self.live_signal_sources.split(",") if item.strip()]
+        if not selected:
+            raise RuntimeError("LIVE_SIGNAL_SOURCES must contain at least one signal source")
+        invalid = sorted(set(selected) - allowed)
+        if invalid:
+            raise RuntimeError(f"LIVE_SIGNAL_SOURCES contains unsupported sources: {', '.join(invalid)}")
+        return list(dict.fromkeys(selected))
 
     def validate_production(self) -> None:
         if self.env.lower() in {"production", "staging"}:
