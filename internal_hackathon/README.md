@@ -50,6 +50,12 @@ The backend's canonical HTTP contracts live in `services/backend/app/schemas/`; 
 contracts live in their owning packages. Never create another server or duplicate scoring rules
 inside an endpoint.
 
+The bounded farmer conversation agent is exposed at `POST /api/v1/copilot/chat`.
+It is template-first by default; Sarvam is enabled only server-side with
+`LLM_PROVIDER=sarvam`, `LLM_EXTERNAL_ALLOWED=true`, and `SARVAM_API_KEY` in an
+ignored backend environment file or deployment secret store. Never put that key
+in a `VITE_*` variable or browser bundle.
+
 ```
 Observation → M3 produces, M4 consumes
 RiskEvent   → M4 produces, M5/M6/M7/M8 consume

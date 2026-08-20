@@ -10,6 +10,7 @@ from app.core.database import SessionLocal
 from app.integrations.live_data import LiveFetchResult
 from app.main import app
 from app.models.case import AlertCase
+from app.models.risk import RiskEvent
 from adapters.sources.registry import build_registry
 
 
@@ -70,6 +71,34 @@ def test_flagship_replay_creates_red_case_with_three_drivers_and_safe_stale_path
         )
         assert resolved.status_code == 200
         assert resolved.json()["status"] == "resolved"
+
+
+def test_farmer_copilot_chat_returns_grounded_template_when_external_provider_is_disabled():
+    with TestClient(app) as client:
+        created = client.post("/api/v1/farmer-profiles", json=_profile("farmer-chat"))
+        assert created.status_code == 201
+        replay = client.post("/api/v1/replay/scenario", json={"farmer_token": "farmer-chat", "scenario": "rainfall_shock"})
+        assert replay.status_code == 200
+        # Replay fixtures are historical by design; make this row current so
+        # the chat test exercises the active-event path rather than the stale
+        # safety fallback.
+        with SessionLocal() as db:
+            row = db.query(RiskEvent).filter(RiskEvent.farmer_token == "farmer-chat").order_by(RiskEvent.id.desc()).first()
+            assert row is not None
+            row.expires_at = datetime.utcnow() + timedelta(hours=1)
+            db.commit()
+
+        response = client.post(
+            "/api/v1/copilot/chat",
+            json={"farmer_token": "farmer-chat", "message": "Why is my status red?", "locale": "en"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["provider"] == "template"
+        assert body["safe_fallback"] is True
+        assert body["event_id"]
+        assert body["citations"]
+        assert "credit" in body["disclaimer"].lower()
 
 
 def test_error_envelope_and_consent_withdrawal_are_enforced():

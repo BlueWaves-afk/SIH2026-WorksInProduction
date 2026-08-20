@@ -1,4 +1,4 @@
-import type { ActionCard, ConsentState, MandiQuote, RiskEvent } from "ui-kit";
+import type { ActionCard, ConsentState, CopilotMessage, MandiQuote, RiskEvent } from "ui-kit";
 import { demoActionCard, demoMandis, demoRiskEvent } from "../demo";
 import { readCachedStatus, writeCachedStatus } from "../features/offline/statusCache";
 import { accessToken, demoMode } from "../auth/supabase";
@@ -92,4 +92,35 @@ export async function loadFarmerStatus(farmerToken?: string): Promise<FarmerStat
     };
     throw new Error("No saved status is available. Connect to the internet and try again.");
   }
+}
+
+export interface CopilotConversationResponse {
+  reply: string;
+  provider: string;
+  model: string;
+  safe_fallback: boolean;
+  citations: Array<{ source_doc: string; chunk_id: string; quote: string }>;
+  event_id?: string | null;
+  disclaimer: string;
+}
+
+/** Send only the bounded conversation context; the provider key stays server-side. */
+export async function sendCopilotMessage(
+  message: string,
+  locale: FarmerProfileDraft["locale"],
+  history: CopilotMessage[],
+): Promise<CopilotConversationResponse> {
+  const farmerToken = await resolveFarmerToken();
+  return request<CopilotConversationResponse>("/api/v1/copilot/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      farmer_token: farmerToken,
+      message,
+      locale,
+      history: history.slice(-8).map((item) => ({
+        role: item.role === "farmer" ? "user" : "assistant",
+        content: item.text,
+      })),
+    }),
+  });
 }

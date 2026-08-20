@@ -49,6 +49,28 @@ into the FDI scorer as generic signal rows.
 templates and a DLT-compliant sender configuration. The application does not
 assume Twilio or any other provider until that choice is made.
 
+## LLM / conversation values
+
+Sarvam is the approved server-side provider for the bounded farmer-support
+conversation agent. The key belongs only in the backend environment (Render or
+an ignored `services/backend/.env.local`), never in Vercel/browser variables or
+the Android project checked into source control.
+
+| Variable | Local default | Purpose |
+|---|---|---|
+| `LLM_PROVIDER` | `template` | Set to `sarvam` only after provider review |
+| `LLM_MODEL` | `sarvam-105b-conversations` | Sarvam conversational model |
+| `LLM_EXTERNAL_ALLOWED` | `false` | Explicit kill switch for outbound LLM calls |
+| `SARVAM_API_KEY` | empty | Backend-only subscription key |
+| `SARVAM_BASE_URL` | `https://api.sarvam.ai/v1` | Provider base URL |
+| `SARVAM_TIMEOUT_SECONDS` | `20` | Per-request timeout |
+| `LLM_MAX_OUTPUT_TOKENS` | `256` | Cost/latency cap |
+
+The agent sends only a redacted, coarse profile and current deterministic risk
+drivers. It never sends the farmer token, phone, Aadhaar, bank details, or raw
+consent ledger. Provider failure, missing consent, stale events, or a disabled
+kill switch return the template response instead.
+
 ## Release order
 
 1. Apply `services/backend/alembic upgrade head` against a disposable Supabase
@@ -60,3 +82,6 @@ assume Twilio or any other provider until that choice is made.
 4. Enable one live source at a time and verify `/readyz`, `/api/v1/ingestion/health`,
    `/api/v1/ingestion/preview`, and the stale-data replay before enabling live
    scoring.
+5. If enabling Sarvam, add the key to the backend secret store, set
+   `LLM_PROVIDER=sarvam` and `LLM_EXTERNAL_ALLOWED=true`, then exercise
+   `/api/v1/copilot/chat` with synthetic data. Vercel receives no Sarvam key.

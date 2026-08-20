@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { type ConsentState, type CopilotMessage } from "ui-kit";
 import "ui-kit/styles.css";
-import { loadFarmerStatus, submitFarmerProfile, type FarmerStatus } from "../api/client";
+import { loadFarmerStatus, sendCopilotMessage, submitFarmerProfile, type FarmerStatus } from "../api/client";
 import { demoMode } from "../auth/supabase";
 import { describeAge } from "../features/offline/statusCache";
 import { demoActionCard, demoAlerts, demoMandis, demoRiskEvent } from "../demo";
@@ -146,22 +146,31 @@ export function App() {
     }
   }
 
-  function replyTo(text: string) {
+  async function replyTo(text: string) {
     const question = text.trim();
     if (!question) return;
-    const lower = question.toLowerCase();
-    const answer = lower.includes("why") || lower.includes("का") || lower.includes("का?")
-      ? status ? status.risk_event.contributors.slice(0, 2).map((driver) => driver.explanation).join(". ") + "." : "Your latest status is not available yet."
-      : lower.includes("market") || lower.includes("mandi") || lower.includes("बाजार")
-        ? "I can compare nearby market prices. Open Nearby markets to review the latest available quotes before deciding."
-        : "The safest next step is to share your crop condition with the agriculture officer. I can show the approved action plan or explain any driver.";
     setMessages((current) => [...current, { id: `farmer-${Date.now()}`, role: "farmer", text: question, created_at: new Date().toISOString() }]);
     setCopilotInput("");
     setThinking(true);
-    window.setTimeout(() => {
+    try {
+      // First-ever demo sessions have no backend profile. Keep the local
+      // fixture path for those sessions; onboarded/deployed users use the
+      // authenticated Sarvam-backed endpoint.
+      const farmerToken = window.localStorage.getItem("kisansetu.farmer_token");
+      if (demoMode && !farmerToken) throw new Error("demo fixture conversation");
+      const response = await sendCopilotMessage(question, locale, messages);
+      setMessages((current) => [...current, { id: `assistant-${Date.now()}`, role: "assistant", text: response.reply, created_at: new Date().toISOString() }]);
+    } catch {
+      const lower = question.toLowerCase();
+      const answer = lower.includes("why") || lower.includes("का") || lower.includes("का?")
+        ? status ? status.risk_event.contributors.slice(0, 2).map((driver) => driver.explanation).join(". ") + "." : "Your latest status is not available yet."
+        : lower.includes("market") || lower.includes("mandi") || lower.includes("बाजार")
+          ? "I can compare nearby market prices. Open Nearby markets to review the latest available quotes before deciding."
+          : "The safest next step is to share your crop condition with the agriculture officer. I can show the approved action plan or explain any driver.";
       setMessages((current) => [...current, { id: `assistant-${Date.now()}`, role: "assistant", text: answer, created_at: new Date().toISOString() }]);
+    } finally {
       setThinking(false);
-    }, 1800);
+    }
   }
 
   if (!onboarded) {

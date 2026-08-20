@@ -33,6 +33,10 @@
 - [x] Added output validation rejecting dosage, diagnosis and guaranteed-eligibility language.
 - [x] Added contact-consent gating so a draft message is omitted when contact consent is absent.
 - [x] Added template-first driver narration with the upstream explanation preserved.
+- [x] Added a server-side Sarvam chat-completions adapter using `api-subscription-key`, with no key in frontend code or logs.
+- [x] Added the bounded `POST /api/v1/copilot/chat` agent with farmer ownership/storage-consent checks, active-event grounding, redacted context, prompt-injection sanitisation, safety validation and deterministic fallback.
+- [x] Connected the farmer copilot UI to the live conversation endpoint while preserving an explicit first-run demo fixture path.
+- [x] Added Sarvam provider transport tests and an API integration test covering grounded citations and template fallback.
 - [x] Added M7 tests for draft-only behavior, consent gating, expiry rejection, PII redaction and prompt-injection sanitisation.
 
 ### Mobile-first interface refresh — verified
@@ -114,13 +118,14 @@
 ## Verification run
 
 - `make PYTHON=.venv/bin/python lint` — passed.
-- Full Python package test run — 65 tests passed with an isolated SQLite database.
+- Full Python package test run — 69 tests passed with an isolated SQLite database.
 - `npm run lint` — farmer PWA, officer dashboard and UI kit TypeScript checks passed.
 - `npm run test` — farmer PWA, officer dashboard and UI kit test suites passed.
 - `npm run build` — farmer PWA and officer dashboard production builds passed.
 - `npm run test:e2e` — mobile farmer and desktop officer browser journeys passed.
 - `npm audit` — zero production or development dependency vulnerabilities.
 - Live adapter tests — IMD/AGMARKNET provider parsing and live-score persistence path passed with HTTP mock transports; no provider credentials were used.
+- Sarvam provider tests — OpenAI-compatible chat transport/header parsing and missing-key safety boundary passed with HTTP mock transport; no Sarvam credential was used.
 - CI now installs the unified backend, runs the monorepo checks and executes both Playwright journeys.
 - Unified backend tests — 9 tests passed, including Auth ownership, role-claim and district-isolation cases.
 - Alembic migration smoke test — initial schema through the unified backend revision passed on SQLite; PostGIS geometry is enabled only on PostgreSQL/Supabase.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -157,6 +157,28 @@ class CopilotBriefRequest(BaseModel):
     locale: str = Field(default="en", min_length=2, max_length=8)
 
 
+class ConversationMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class CopilotConversationRequest(BaseModel):
+    farmer_token: str = Field(min_length=1, max_length=160)
+    message: str = Field(min_length=1, max_length=2000)
+    locale: str = Field(default="en", min_length=2, max_length=8)
+    history: list[ConversationMessage] = Field(default_factory=list, max_length=12)
+
+
+class CopilotConversationResponse(BaseModel):
+    reply: str
+    provider: str
+    model: str
+    safe_fallback: bool
+    citations: list[Citation] = Field(default_factory=list)
+    event_id: str | None = None
+    disclaimer: str = "This is a support signal, not a credit, loan-default, or insurance score."
+
+
 class NotificationDispatchRequest(BaseModel):
     case_id: int
     channel: str = Field(default="sms", pattern="^(sms|voice|push)$")
@@ -206,6 +228,9 @@ __all__ = [
     "ConsentUpdate",
     "Contributor",
     "CopilotBrief",
+    "ConversationMessage",
+    "CopilotConversationRequest",
+    "CopilotConversationResponse",
     "FarmerProfile",
     "FarmerProfileCreate",
     "FarmerProfilePublic",

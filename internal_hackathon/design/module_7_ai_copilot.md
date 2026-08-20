@@ -19,6 +19,10 @@ LLM explainer/translator, guardrails, shadow ML.
 - **Farmer Voice Copilot** — a Bhashini-backed (via M3) voice agent that *narrates* the deterministic score
   band, its drivers, and scheme RAG answers in the farmer's language. It never invents a score, diagnosis,
   or dosage.
+- **Bounded farmer conversation** — `POST /api/v1/copilot/chat` accepts a short question and bounded history,
+  grounds the answer in the current `RiskEvent`, and uses Sarvam's `sarvam-105b-conversations` model only
+  when the backend kill switch and key are enabled. It is not a general-purpose chatbot: the deterministic
+  template path remains the safety fallback, and the agent cannot send, score, or change a case.
 - **LLM explainer/translator** — a narrow, template-first, agronomy-locked service that turns M4's
   machine-readable drivers into natural dialect sentences, used by both the farmer "why" screen and the
   officer's draft message.
@@ -47,7 +51,8 @@ LLM explainer/translator, guardrails, shadow ML.
 - Computing, adjusting, or overriding the support-priority score or band (M4 owns this exclusively).
 - Sending any message, SMS, push notification, or placing any call (M6 owns delivery; this module only
   drafts).
-- General-purpose chatbot / open-ended farmer Q&A (masterspec §13, explicit non-goal).
+- General-purpose chatbot / unconstrained farmer Q&A (masterspec §13, explicit non-goal). The bounded
+  support conversation endpoint is allowed only for grounded, short questions over the current event.
 - Live entitlement/eligibility determination or any lender/loan-bureau lookup (masterspec §4.3 — retrieval
   only, officer-verified).
 - Automatic pesticide dosage or medical/agronomic diagnosis generation (permanent guardrail, not a phase
@@ -173,6 +178,7 @@ it is additive and never referenced by M4/M5/M6.
 |---|---|---|---|
 | `/api/v1/copilot/brief` | `POST { case_id }` | officer role, MFA per M2 RBAC | Generate/refresh a `CopilotBrief` for a case. |
 | `/api/v1/copilot/explain` | `GET ?event_id=&locale=` | any authenticated app (farmer app, officer dashboard) | Driver → natural-language sentence(s) for the "why" screen (no draft message, no scheme RAG). |
+| `/api/v1/copilot/chat` | `POST { farmer_token, message, locale, history[] }` | farmer ownership or officer role, storage consent | Bounded question answering grounded in the active deterministic event; no outbound action. |
 | `/api/v1/copilot/voice-session` | `POST { farmer_token, locale }` *(stretch)* | farmer session token (M2) | Opens a narration session; media I/O handled by M3, this module only supplies script segments. |
 
 All inbound calls require a valid `AuthContext`; `/copilot/brief` additionally checks `ConsentContext.contact`
@@ -187,7 +193,7 @@ a `draft_message` field and flags `"contact_consent_missing"`.
 | M5 | Read `alert_cases`, `case_status_history` | Case summary + prior officer actions. |
 | M2 | Read `AuthContext`, `ConsentContext` | RBAC gate + consent gate. |
 | M3 | Bhashini ASR/TTS/translation calls | Voice narration, message localization. |
-| External LLM provider | Tool-use / chat completion (Claude or Gemini API, provider abstracted behind one interface) | Plan next tool call, compose draft language, polish explainer sentences. |
+| External LLM provider | Server-side Sarvam chat completion (`sarvam-105b-conversations`) behind a thin adapter | Grounded conversational wording and optional draft polish; never scoring or sending. |
 
 **No outbound call in this module ever targets an M6 send endpoint, an M5 status-transition endpoint, or an
 M4 write path.** This is enforced both structurally (no such client is imported into `services/ai-copilot`)
@@ -205,7 +211,7 @@ read-only), M5 (AlertCase/case history, read-only).
 | Dependency | Role |
 |---|---|
 | LangGraph (or equivalent tool-use loop) | Agent orchestration for the Officer Copilot |
-| Anthropic Claude API or Gemini API (one, provider-abstracted) | LLM reasoning/composition step |
+| Sarvam API (`sarvam-105b-conversations`) | Server-side LLM reasoning/composition step; key stays in backend secrets |
 | `pgvector` (via M1's Postgres) | Scheme chunk similarity search |
 | SQLAlchemy | Read-only queries against M1 tables |
 | Pydantic | `CopilotBrief`, `SchemeMatch`, etc. schema validation |
@@ -220,7 +226,7 @@ read-only), M5 (AlertCase/case history, read-only).
 |---|---|---|
 | Language | Python | Matches M1/M4/M5 stack |
 | Agent orchestration | LangGraph / tool-use loop | Deterministic tool sequencing, inspectable state |
-| LLM | Claude or Gemini API (single provider for MVP, thin abstraction) | Composition + polish only, never scoring |
+| LLM | Sarvam API (`sarvam-105b-conversations`) via backend-only subscription key | Grounded composition only, never scoring |
 | RAG | `pgvector` in the shared Postgres (M1) | One database, one audit surface |
 | API | FastAPI router mounted into M1's app | Consistency with platform gateway |
 | Validation | Pydantic | Schema + guardrail enforcement |

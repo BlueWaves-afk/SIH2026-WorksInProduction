@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     notify_provider: str = "mock"
     sms_provider_key: str | None = None
     bhashini_api_key: str | None = None
+    # LLM calls are server-side only.  The safe default keeps local/demo
+    # deployments deterministic; enabling a provider is an explicit release
+    # decision via LLM_EXTERNAL_ALLOWED=true.
+    llm_provider: str = "template"
+    llm_model: str = "sarvam-105b-conversations"
+    llm_external_allowed: bool = False
+    llm_max_output_tokens: int = Field(default=256, ge=32, le=2048)
+    sarvam_api_key: str | None = None
+    sarvam_base_url: str = "https://api.sarvam.ai/v1"
+    sarvam_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
     imd_api_key: str | None = None
     agmarknet_api_key: str | None = None
     # Live ingestion is opt-in.  The application stays on deterministic
