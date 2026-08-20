@@ -1,3 +1,1 @@
-"""/me/export, /me/delete."""
-
-# TODO(M2)
+"""Data-rights routes are mounted by ``services/backend``."""

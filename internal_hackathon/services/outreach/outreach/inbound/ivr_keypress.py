@@ -1,3 +1,5 @@
-"""DTMF handler -> farmer_report / request-officer-callback."""
+"""DTMF handler."""
 
-# TODO(M9)
+
+def parse_keypress(key: str) -> str:
+    return {"1": "CONFIRM_SAFE", "2": "REQUEST_OFFICER", "9": "STOP"}.get(key, "UNRECOGNISED")

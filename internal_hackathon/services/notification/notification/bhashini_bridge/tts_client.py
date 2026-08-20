@@ -1,3 +1,5 @@
-"""Thin wrapper over M3's Bhashini adapter."""
+"""Thin, stateless bridge over a configured Bhashini adapter."""
 
-# TODO(M6)
+
+def render_voice(text: str, lang: str, adapter) -> bytes:
+    return adapter.synthesize(text, lang)

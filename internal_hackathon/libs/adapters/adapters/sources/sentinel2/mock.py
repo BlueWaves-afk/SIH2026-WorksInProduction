@@ -1,3 +1,6 @@
-"""sentinel2 adapter — mock. Signal model v2 (FDI-aligned). See design/signal_model_fdi_aligned.md."""
+from .._common import MockSignalAdapter
 
-# TODO(M3)
+
+class Sentinel2MockAdapter(MockSignalAdapter):
+    def __init__(self):
+        super().__init__("sentinel2", [{"metric": "satellite_crop_stress", "value": 0, "unit": "percent"}])

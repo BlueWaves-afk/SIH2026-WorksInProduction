@@ -65,3 +65,6 @@ BANNED_FIELDS = frozenset({"aadhaar", "bank_account", "lender_id", "credit_score
 # We deliberately DO NOT score it - S15 is an officer-side context flag only.
 # See design/signal_model_fdi_aligned.md section 5.
 D7_IS_SCORED = False
+
+# Shadow challenger: logged-only, never in the safety path. Off by default.
+SHADOW_ML_ENABLED = False

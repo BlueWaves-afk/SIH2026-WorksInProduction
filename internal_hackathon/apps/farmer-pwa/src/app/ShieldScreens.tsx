@@ -33,13 +33,13 @@ import {
   X,
 } from "lucide-react";
 import { useT } from "../i18n";
-import { ConsentToggle, type ActionCard, type ConsentState, type Contributor, type CopilotMessage, type MandiQuote, type RiskEvent } from "ui-kit";
+import { ConsentToggle, GeoMap, type ActionCard, type ConsentState, type Contributor, type CopilotMessage, type MandiQuote, type RiskEvent } from "ui-kit";
 
 function InnerHeader({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack: () => void }) {
   return (
     <header className="shield-inner-header">
       <button onClick={onBack} aria-label="Go back"><ArrowLeft size={20} /></button>
-      <span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>
+      <span><h1>{title}</h1>{subtitle && <small>{subtitle}</small>}</span>
       <button className="shield-inner-mark" aria-label="KisanSetu"><span className="shield-inner-mark-logo" aria-hidden="true" /></button>
     </header>
   );
@@ -185,15 +185,15 @@ export function ShieldActionScreen({ card, onBack, onAsk }: { card: ActionCard; 
 
 export function ShieldMarketScreen({ mandis, onBack }: { mandis: MandiQuote[]; onBack: () => void }) {
   const t = useT();
+  const mapPoints = [
+    { id: "current-area", label: "Dindori area", longitude: 73.84, latitude: 20.22, tone: "current" as const, detail: "Approximate location" },
+    ...mandis.flatMap((mandi) => mandi.longitude == null || mandi.latitude == null ? [] : [{ id: mandi.mandi, label: mandi.mandi, longitude: mandi.longitude, latitude: mandi.latitude, tone: "green" as const, detail: `₹${mandi.modal_price.toLocaleString("en-IN")} modal price` }]),
+  ];
   return (
     <div className="shield-screen">
       <InnerHeader title="Nearby markets" subtitle="Compare before selling" onBack={onBack} />
       <label className="shield-search"><Search size={18} /><input aria-label="Search markets" placeholder={t("copilot.search")} /><button aria-label="Market filters">⌁</button></label>
-      <section className="shield-market-map" aria-label="Nearby market map">
-        <span className="shield-map-road road-one" /><span className="shield-map-road road-two" /><span className="shield-map-road road-three" />
-        <span className="shield-map-pin pin-one"><Store size={15} /></span><span className="shield-map-pin pin-two"><IndianRupee size={15} /></span><span className="shield-map-pin pin-three"><Store size={15} /></span>
-        <span className="shield-current-location"><i /><b>Dindori</b></span>
-      </section>
+      <GeoMap points={mapPoints} center={[73.84, 20.22]} zoom={9} styleUrl={import.meta.env.VITE_MAP_STYLE_URL as string | undefined} label="Nearby public markets" privacyNote="Approximate farmer area" />
       <section className="shield-market-list">
         <div className="shield-section-heading"><div><span>PRICE OPTIONS</span><h2>Markets near you</h2></div><b>Today</b></div>
         {mandis.map((mandi, index) => (

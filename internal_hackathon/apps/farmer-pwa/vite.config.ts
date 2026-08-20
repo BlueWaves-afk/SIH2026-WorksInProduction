@@ -25,6 +25,9 @@ export default defineConfig({
       workbox: {
         // Precache the built shell so a cold offline load still boots.
         globPatterns: ["**/*.{js,css,html,webp,woff2}"],
+        // MapLibre is a large, route-level enhancement. Fetch/cache it only
+        // when the farmer opens a map instead of charging every mobile install.
+        globIgnores: ["**/maplibre-gl-*.js"],
         navigateFallback: "index.html",
         cleanupOutdatedCaches: true,
         clientsClaim: true,

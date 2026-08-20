@@ -1,3 +1,10 @@
-"""DeliveryAttempt ORM (M6-owned table)."""
+"""Wire shape for a provider attempt."""
 
-# TODO(M6)
+from pydantic import BaseModel
+
+
+class DeliveryAttempt(BaseModel):
+    message_id: str
+    channel: str
+    status: str
+    provider_reference: str | None = None

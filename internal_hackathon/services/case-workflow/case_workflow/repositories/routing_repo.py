@@ -1,3 +1,7 @@
-"""Officer/village routing table."""
+"""Routing repository protocol."""
 
-# TODO(M5)
+from typing import Protocol
+
+
+class RoutingRepository(Protocol):
+    def officer_for_village(self, village_id: str) -> str | None: ...

@@ -1,3 +1,7 @@
-"""Channel ladder + fallback-on-failure logic."""
+"""Channel fallback policy."""
 
-# TODO(M9)
+
+def next_channel(current: str, *, contact_consent: bool) -> str | None:
+    if not contact_consent:
+        return None
+    return {"voice": "sms", "sms": "push", "push": None}.get(current)

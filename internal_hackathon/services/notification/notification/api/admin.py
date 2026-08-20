@@ -1,3 +1,1 @@
-"""Test-send, outbox inspection (AuthContext-gated)."""
-
-# TODO(M6)
+"""Admin routes are mounted by the unified backend."""

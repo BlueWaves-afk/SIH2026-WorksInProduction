@@ -35,3 +35,69 @@ export const demoBrief: CopilotBrief = {
   citations: [{ source_doc: "PMFBY operational guidelines", chunk_id: "pmfby-14", quote: "Coverage and claim decisions follow the applicable notified area and season." }],
   model_version: "template-v1",
 };
+
+
+/* ---------------------------------------------------------------------------
+   Villager complaints.
+
+   Per module_9 §5 these arrive as `InboundEvent` — a farmer raising their hand
+   by missed call, IVR keypress or SMS reply — and open an M5 case. The shape is
+   M9-owned and not yet in the shared contract set (module_0 §4), so it is typed
+   locally here; it should be promoted to M1 before the contract freeze.
+--------------------------------------------------------------------------- */
+
+export type ComplaintIntent = "request_callback" | "report_damage" | "report_no_buyer" | "opt_out";
+export type ComplaintChannel = "missed_call" | "ivr_keypress" | "sms_reply";
+
+export interface VillagerComplaint {
+  inbound_id: string;
+  case_id: string;
+  farmer_token: string;
+  farmer_label: string;
+  village: string;
+  channel: ComplaintChannel;
+  intent: ComplaintIntent;
+  payload: string;
+  received_at: string;
+}
+
+export const INTENT_LABEL: Record<ComplaintIntent, string> = {
+  request_callback: "Callback requested",
+  report_damage: "Crop damage",
+  report_no_buyer: "No buyer",
+  opt_out: "Opt-out",
+};
+
+export const CHANNEL_LABEL: Record<ComplaintChannel, string> = {
+  missed_call: "Missed call",
+  ivr_keypress: "IVR keypress",
+  sms_reply: "SMS reply",
+};
+
+/** Fixed enum from module_5 §6.2 — no free-text-only close. */
+export const RESOLUTION_LABEL: Record<string, string> = {
+  SUPPORT_PROVIDED: "Support provided",
+  REFERRED_EXTERNAL: "Referred to FPO/KVK",
+  FARMER_UNREACHABLE: "Farmer unreachable",
+  FALSE_POSITIVE: "No distress found",
+  DUPLICATE: "Duplicate",
+  NO_ACTION_NEEDED: "No action needed",
+};
+
+const hoursAgo = (h: number) => new Date(Date.parse(NOW) - h * 3600_000).toISOString();
+
+export const demoComplaints: VillagerComplaint[] = [
+  { inbound_id: "in-001", case_id: "case-001", farmer_token: "farmer-demo-token", farmer_label: "Farmer #A2F9", village: "Dindori", channel: "ivr_keypress", intent: "report_damage", payload: "Pressed 2 — crop damage in cotton plot", received_at: hoursAgo(3) },
+  { inbound_id: "in-002", case_id: "case-002", farmer_token: "farmer-demo-token-2", farmer_label: "Farmer #B7K1", village: "Kalwan", channel: "missed_call", intent: "request_callback", payload: "Missed call to the district short code", received_at: hoursAgo(9) },
+  { inbound_id: "in-003", case_id: "case-004", farmer_token: "farmer-demo-token-4", farmer_label: "Farmer #C3M8", village: "Dindori", channel: "sms_reply", intent: "report_no_buyer", payload: "SMS: \"no buyer for onion at mandi\"", received_at: hoursAgo(14) },
+  { inbound_id: "in-004", case_id: "case-005", farmer_token: "farmer-demo-token-5", farmer_label: "Farmer #D8P2", village: "Peint", channel: "ivr_keypress", intent: "request_callback", payload: "Pressed 1 — wants an officer to call", received_at: hoursAgo(20) },
+  { inbound_id: "in-005", case_id: "case-006", farmer_token: "farmer-demo-token-6", farmer_label: "Farmer #E4R7", village: "Kalwan", channel: "sms_reply", intent: "report_damage", payload: "SMS: \"leaves turning yellow after rain\"", received_at: hoursAgo(28) },
+  { inbound_id: "in-006", case_id: "case-003", farmer_token: "farmer-demo-token-3", farmer_label: "Farmer #F1T5", village: "Peint", channel: "missed_call", intent: "request_callback", payload: "Missed call, callback completed", received_at: hoursAgo(40) },
+];
+
+/** Extra cases so the queue reflects a realistic district load. */
+export const demoExtraCases: AlertCase[] = [
+  { case_id: "case-004", event_id: "evt-demo-ps02-001", farmer_token: "farmer-demo-token-4", village_id: "Nashik / Dindori", recipient_role: "extension_officer", band: "amber", confidence: .78, assigned_to: "Officer Asha", channel_preferences: ["sms"], status: "new", sla_due_at: hoursAgo(-2) },
+  { case_id: "case-005", event_id: "evt-demo-ps02-002", farmer_token: "farmer-demo-token-5", village_id: "Nashik / Peint", recipient_role: "extension_officer", band: "red", confidence: .82, assigned_to: "Officer Asha", channel_preferences: ["sms", "ivr"], status: "acknowledged", sla_due_at: hoursAgo(4) },
+  { case_id: "case-006", event_id: "evt-demo-ps02-002", farmer_token: "farmer-demo-token-6", village_id: "Nashik / Kalwan", recipient_role: "extension_officer", band: "amber", confidence: .69, assigned_to: "Officer Vikram", channel_preferences: ["sms"], status: "visited", sla_due_at: hoursAgo(12) },
+];

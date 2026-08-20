@@ -1,3 +1,1 @@
-"""/audit/* (admin/auditor only)."""
-
-# TODO(M2)
+"""Audit routes are mounted by ``services/backend``."""

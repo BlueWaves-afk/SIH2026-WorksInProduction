@@ -1,3 +1,6 @@
-"""bhashini adapter — real. See module_3 spec §4."""
+from .._common import MockVoiceAdapter
 
-# TODO(M3)
+
+class BhashiniRealAdapter(MockVoiceAdapter):
+    def translate(self, text: str, src_lang: str, tgt_lang: str) -> str:
+        raise RuntimeError("Bhashini real adapter requires a configured API key")

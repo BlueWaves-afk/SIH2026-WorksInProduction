@@ -220,6 +220,7 @@ __marimo__/
 # Local environment, credentials, and OS files
 .env.*
 !.env.example
+!.env.local.example
 .DS_Store
 *.pem
 *.key

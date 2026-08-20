@@ -9,7 +9,8 @@ PYTHON_PACKAGES := \
 	services/case-workflow \
 	services/notification \
 	services/ai-copilot \
-	services/outreach
+	services/outreach \
+	services/backend
 
 install:
 	$(MAKE) install-python
@@ -26,7 +27,7 @@ test-python:
 	$(PYTHON) -m pytest services libs -q
 
 lint:
-	$(PYTHON) -m ruff check services libs
+	$(PYTHON) -m ruff check --config ruff.toml services libs
 	npm run lint
 
 fmt:

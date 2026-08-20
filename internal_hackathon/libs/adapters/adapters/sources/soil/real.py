@@ -1,3 +1,6 @@
-"""soil adapter — real. Signal model v2 (FDI-aligned). See design/signal_model_fdi_aligned.md."""
+from .._common import ConfiguredRealAdapter
 
-# TODO(M3)
+
+class SoilRealAdapter(ConfiguredRealAdapter):
+    def __init__(self, endpoint: str | None = None):
+        super().__init__("soil", endpoint)

@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+from fastapi.testclient import TestClient
+
+from adapters.core.interfaces import ObservationPayload
+from app.core.config import settings
+from app.integrations.live_data import LiveFetchResult
+from app.main import app
+
+
+def _profile(token: str = "farmer-integration") -> dict:
+    return {
+        "farmer_token": token,
+        "village_id": "demo-village",
+        "locale": "en",
+        "crop": "cotton",
+        "sowing_date": "2026-04-20",
+        "irrigation_type": "rainfed",
+        "area_band": "<1",
+        "institutional_access": "limited",
+        "soil_retention": "poor",
+        "schemes_enrolled": ["PMFBY"],
+        "consent_flags": {
+            "store_data": True,
+            "contact_me": True,
+            "use_analytics": True,
+            "due_window": True,
+        },
+    }
+
+
+def test_flagship_replay_creates_red_case_with_three_drivers_and_safe_stale_path():
+    with TestClient(app) as client:
+        created = client.post("/api/v1/farmer-profiles", json=_profile())
+        assert created.status_code == 201
+
+        replay = client.post(
+            "/api/v1/replay/scenario",
+            json={"farmer_token": "farmer-integration", "scenario": "rainfall_shock"},
+        )
+        assert replay.status_code == 200
+        event = replay.json()["risk_event"]
+        assert event["band"] == "red"
+        assert {item["signal"] for item in event["contributors"]} >= {"S1", "S5", "S13"}
+        assert all(item["source"] and item["observed_at"] for item in event["contributors"])
+        assert replay.json()["case"]["status"] == "new"
+
+        stale = client.post(
+            "/api/v1/replay/scenario",
+            json={"farmer_token": "farmer-integration", "scenario": "stale_data"},
+        )
+        stale_event = stale.json()["risk_event"]
+        assert stale_event["band"] != "red"
+        assert stale_event["confidence"] < 0.45
+        assert any("suppressed" in flag for flag in stale_event["context_flags"])
+        assert len(client.get("/api/v1/cases").json()["items"]) == 1
+
+        cases = client.get("/api/v1/cases").json()["items"]
+        case_id = int(cases[0]["case_id"])
+        assert client.post(f"/api/v1/cases/{case_id}/acknowledge").status_code == 200
+        assert client.post("/api/v1/copilot/brief", json={"case_id": case_id}).status_code == 200
+        resolved = client.post(
+            f"/api/v1/cases/{case_id}/resolve",
+            json={"resolution_code": "referred", "notes": "FPO referral"},
+        )
+        assert resolved.status_code == 200
+        assert resolved.json()["status"] == "resolved"
+
+
+def test_error_envelope_and_consent_withdrawal_are_enforced():
+    with TestClient(app) as client:
+        assert client.get("/api/v1/not-a-route").json()["code"] == "not_found"
+        created = client.post("/api/v1/farmer-profiles", json=_profile("farmer-consent"))
+        assert created.status_code == 201
+        token = created.json()["farmer_token"]
+        withdrawn = client.put(f"/api/v1/consents/{token}", json={"storage": False, "contact": False})
+        assert withdrawn.status_code == 200
+        assert withdrawn.json()["consent"]["store_data"] is False
+        observation = client.post("/api/v1/observations", json={"farmer_token": token, "source": "imd", "observed_at": "2026-06-01T00:00:00Z", "metric": "rainfall_deviation_pct", "value": -10, "ttl_seconds": 3600})
+        assert observation.status_code == 403
+
+
+def test_farmer_token_is_not_a_bearer_credential():
+    owner_headers = {"x-demo-role": "farmer", "x-demo-principal": "supabase-user-owner"}
+    stranger_headers = {"x-demo-role": "farmer", "x-demo-principal": "supabase-user-stranger"}
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/v1/farmer-profiles",
+            json=_profile("opaque-farmer-resource"),
+            headers=owner_headers,
+        )
+        assert created.status_code == 201
+        assert client.get("/api/v1/farmer-profiles/me", headers=owner_headers).json()["farmer_token"] == "opaque-farmer-resource"
+
+        # Knowing the opaque token does not authorize consent, observations,
+        # risk reads, exports, or deletion for another Supabase subject.
+        assert client.get("/api/v1/consents/opaque-farmer-resource", headers=stranger_headers).status_code == 403
+        assert client.get("/api/v1/consents/opaque-farmer-resource/export", headers=stranger_headers).status_code == 403
+        assert client.delete("/api/v1/consents/opaque-farmer-resource", headers=stranger_headers).status_code == 403
+        observation = {
+            "farmer_token": "opaque-farmer-resource",
+            "source": "farmer_report",
+            "observed_at": "2026-06-01T00:00:00Z",
+            "metric": "acute_farmer_report",
+            "value": "crop damage",
+            "ttl_seconds": 3600,
+        }
+        assert client.post("/api/v1/observations", json=observation, headers=stranger_headers).status_code == 403
+        assert client.get(
+            "/api/v1/risk-events?farmer_token=opaque-farmer-resource",
+            headers=stranger_headers,
+        ).status_code == 403
+
+
+def test_officer_cannot_override_jwt_district_scope():
+    headers = {
+        "x-demo-role": "extension_officer",
+        "x-demo-principal": "officer-nashik",
+        "x-demo-district": "nashik",
+    }
+    with TestClient(app) as client:
+        assert client.get("/api/v1/cases?district_id=pune", headers=headers).status_code == 403
+        assert client.get("/api/v1/risk-events?district_id=pune", headers=headers).status_code == 403
+        assert client.get("/api/v1/analytics/district?district_id=pune", headers=headers).status_code == 403
+
+
+def test_live_recalculate_persists_provider_observations_before_scoring(monkeypatch):
+    now = datetime(2026, 8, 7, tzinfo=UTC)
+    live_rows = [
+        ObservationPayload(
+            source="imd",
+            observed_at=now,
+            metric="rainfall_deviation_pct",
+            value=-35,
+            unit="percent",
+            ttl=timedelta(days=2),
+        ),
+        ObservationPayload(
+            source="agmarknet",
+            observed_at=now,
+            metric="mandi_price_deviation_pct",
+            value={"deviation_pct": -25, "below_msp": True},
+            unit="percent",
+            ttl=timedelta(days=3),
+        ),
+    ]
+
+    def fake_fetch_live(**_kwargs):
+        return LiveFetchResult(
+            observations=live_rows,
+            sources=[
+                {"source": "imd", "mode": "real", "configured": True, "observation_count": 1, "health": {}},
+                {"source": "agmarknet", "mode": "real", "configured": True, "observation_count": 1, "health": {}},
+            ],
+            errors=[],
+        )
+
+    monkeypatch.setattr("app.integrations.live_data.fetch_live", fake_fetch_live)
+    monkeypatch.setattr(settings, "live_data_enabled", True)
+    with TestClient(app) as client:
+        created = client.post("/api/v1/farmer-profiles", json=_profile("farmer-live"))
+        assert created.status_code == 201
+        response = client.post(
+            "/api/v1/risk-events/recalculate",
+            json={"farmer_token": "farmer-live", "source_mode": "live", "as_of": now.isoformat()},
+        )
+        assert response.status_code == 201
+        event = response.json()
+        assert {item["source"] for item in event["contributors"]} >= {"IMD", "agmarknet"}

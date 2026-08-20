@@ -1,3 +1,12 @@
-"""bhashini adapter — schemas. See module_3 spec §4."""
+from pydantic import BaseModel, Field
 
-# TODO(M3)
+
+class TranslationRequest(BaseModel):
+    text: str
+    source_language: str
+    target_language: str
+
+
+class TranslationResponse(BaseModel):
+    text: str
+    confidence: float = Field(ge=0, le=1)

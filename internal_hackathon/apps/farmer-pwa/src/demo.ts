@@ -39,9 +39,9 @@ export const demoActionCard: ActionCard = {
 };
 
 export const demoMandis: MandiQuote[] = [
-  { mandi: "Dindori", distance_km: 8, modal_price: 6120, change_pct: -17, verified_at: OBSERVED_AT },
-  { mandi: "Lasalgaon", distance_km: 31, modal_price: 6480, change_pct: -11, verified_at: OBSERVED_AT },
-  { mandi: "Nashik", distance_km: 42, modal_price: 6550, change_pct: -9, verified_at: OBSERVED_AT },
+  { mandi: "Dindori", distance_km: 8, modal_price: 6120, change_pct: -17, verified_at: OBSERVED_AT, latitude: 20.205, longitude: 73.827 },
+  { mandi: "Lasalgaon", distance_km: 31, modal_price: 6480, change_pct: -11, verified_at: OBSERVED_AT, latitude: 20.142, longitude: 74.239 },
+  { mandi: "Nashik", distance_km: 42, modal_price: 6550, change_pct: -9, verified_at: OBSERVED_AT, latitude: 20.011, longitude: 73.790 },
 ];
 
 export type AlertKind = "crop" | "rain" | "market" | "pest";

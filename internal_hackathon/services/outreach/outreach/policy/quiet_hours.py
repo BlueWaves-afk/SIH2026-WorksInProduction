@@ -1,3 +1,7 @@
-"""No voice calls 21:00-07:00 IST; SMS queued not sent."""
+"""No voice calls 21:00–07:00 IST; SMS is queued."""
 
-# TODO(M9)
+from datetime import datetime
+
+
+def is_quiet_hours(now: datetime, start: int = 21, end: int = 7) -> bool:
+    return now.hour >= start or now.hour < end if start > end else start <= now.hour < end

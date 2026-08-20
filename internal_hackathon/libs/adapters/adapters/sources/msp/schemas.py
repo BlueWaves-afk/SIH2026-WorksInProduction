@@ -1,3 +1,7 @@
-"""msp adapter — schemas. Signal model v2 (FDI-aligned). See design/signal_model_fdi_aligned.md."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class MSPReference(BaseModel):
+    commodity: str
+    price: float
+    effective_from: str

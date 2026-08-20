@@ -4,5 +4,19 @@
 """
 from .constants import MODEL_VERSION, SCORE_DISCLAIMER
 from .engine import compute_risk_event
+from .errors import (
+    MissingRequiredContextError,
+    PrivacyGuardrailError,
+    ScoringError,
+    ScoringInputError,
+)
 
-__all__ = ["MODEL_VERSION", "SCORE_DISCLAIMER", "compute_risk_event"]
+__all__ = [
+    "MODEL_VERSION",
+    "SCORE_DISCLAIMER",
+    "MissingRequiredContextError",
+    "PrivacyGuardrailError",
+    "ScoringError",
+    "ScoringInputError",
+    "compute_risk_event",
+]

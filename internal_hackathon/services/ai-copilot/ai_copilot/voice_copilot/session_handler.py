@@ -1,3 +1,5 @@
-"""Bridges Bhashini streaming session <-> narration templates."""
+"""Bridges Bhashini calls to deterministic narration."""
 
-# TODO(M7)
+
+def narrate(text: str, *, language: str, voice_adapter) -> bytes:
+    return voice_adapter.synthesize(text, language)

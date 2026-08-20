@@ -17,6 +17,11 @@ from ..guardrails.output_schema_validator import validate_brief
 from .tools.playbook_tool import choose_playbook_action
 
 
+def _utc(value: datetime) -> datetime:
+    """Normalize SQLite's naive UTC values before expiry comparisons."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
 def build_template_brief(
     *,
     event: RiskEvent,
@@ -27,7 +32,7 @@ def build_template_brief(
 ) -> CopilotBrief:
     """Build a cited, fixed-playbook brief without calling a model or sending."""
 
-    if event.expires_at < datetime.now(UTC):
+    if _utc(event.expires_at) < datetime.now(UTC):
         raise ValueError("risk event is expired")
     top_drivers = event.top_drivers(3)
     driver_text = [driver_to_sentence(driver, locale) for driver in top_drivers]

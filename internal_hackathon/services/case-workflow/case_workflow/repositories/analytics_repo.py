@@ -1,3 +1,7 @@
-"""Aggregate queries (cohort-suppressed)."""
+"""Aggregate repository protocol; callers enforce cohort suppression."""
 
-# TODO(M5)
+from typing import Protocol
+
+
+class AnalyticsRepository(Protocol):
+    def district_counts(self, district_id: str) -> dict[str, int]: ...

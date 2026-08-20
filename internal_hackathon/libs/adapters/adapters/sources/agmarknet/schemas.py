@@ -1,3 +1,8 @@
-"""agmarknet adapter — schemas. See module_3 spec §4."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class MarketObservation(BaseModel):
+    mandi_id: str
+    commodity: str
+    modal_price: float
+    arrivals: float | None = None

@@ -1,6 +1,6 @@
 from app.scoring.engine import ScoringEngine
 
-def test_scoring_drought_and_crash():
+def test_legacy_shape_delegates_to_fdi_v2_engine():
     engine = ScoringEngine()
     profile = {'irrigation_type': 'rainfed', 'crop': 'cotton', 'area_band': '<1 ha'}
     weather = {'value': -28, 'ttl': 48} # Drought
@@ -9,10 +9,12 @@ def test_scoring_drought_and_crash():
 
     result = engine.calculate_score(profile, weather, market, repayment)
     
-    assert result['score'] >= 60
-    assert result['band'] == 'Red'
+    # FDI v2 uses 50/70 bands and scores -28%/-18% at their defined buckets.
+    assert result['score'] == 55.9
+    assert result['band'] == 'Amber'
     assert len(result['drivers']) == 3
-    assert result['confidence'] == 1.0
+    # Missing optional source snapshots correctly lower confidence in FDI v2.
+    assert 0 < result['confidence'] < 1
 
 def test_stale_data_suppresses_escalation():
     engine = ScoringEngine()
@@ -26,4 +28,3 @@ def test_stale_data_suppresses_escalation():
     assert result['band'] in ['Green', 'Amber']
     assert result['score'] <= 59
     assert result['confidence'] < 1.0
-

@@ -1,3 +1,5 @@
-"""imd adapter — schemas. See module_3 spec §4."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class IMDObservation(BaseModel):
+    rainfall_deviation_pct: float

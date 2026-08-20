@@ -7,6 +7,8 @@ class OutboxMessage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     message_id = Column(String, unique=True, index=True)
+    idempotency_key = Column(String, unique=True, index=True, nullable=True)
+    farmer_token = Column(String, index=True, nullable=True)
     farmer_phone = Column(String, index=True)
     channel = Column(String)  # 'sms', 'voice', 'whatsapp'
     content = Column(JSON)
@@ -16,4 +18,4 @@ class OutboxMessage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     sent_at = Column(DateTime, nullable=True)
     error_log = Column(String, nullable=True)
-
+    consent_required = Column(String, default="contact")

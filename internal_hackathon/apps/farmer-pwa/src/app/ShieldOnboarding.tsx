@@ -98,11 +98,12 @@ function OptionGrid({ label, hint, options, value, onChange, columns = 3, t }: {
   );
 }
 
-export function ShieldOnboarding({ locale, onLocale, onComplete, submitting }: {
+export function ShieldOnboarding({ locale, onLocale, onComplete, submitting, error }: {
   locale: Locale;
   onLocale: (locale: Locale) => void;
   onComplete: (result: OnboardingResult) => void;
   submitting: boolean;
+  error?: string | null;
 }) {
   const t = useT();
   const [step, setStep] = useState(0);
@@ -311,6 +312,7 @@ export function ShieldOnboarding({ locale, onLocale, onComplete, submitting }: {
         )}
       </div>
 
+      {error && <p className="auth-error shield-ob-submit-error" role="alert">{error}</p>}
       <footer className="shield-ob-foot">
         {step > 0 && (
           <button type="button" className="shield-ob-back" onClick={() => setStep(step - 1)} aria-label="Go back">

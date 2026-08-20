@@ -1,3 +1,6 @@
-"""imd adapter — mock. See module_3 spec §4."""
+from .._common import MockSignalAdapter
 
-# TODO(M3)
+
+class IMDMockAdapter(MockSignalAdapter):
+    def __init__(self):
+        super().__init__("imd", [{"metric": "rainfall_deviation_pct", "value": 0, "unit": "percent"}])

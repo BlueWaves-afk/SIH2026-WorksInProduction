@@ -1,0 +1,8 @@
+line-length = 120
+target-version = "py311"
+
+[lint]
+# Existing FastAPI code intentionally uses dependency calls in signatures, and
+# SQLAlchemy models import classes for metadata registration. Keep CI focused on
+# executable correctness while the monorepo is migrated to a single formatter.
+ignore = ["B008", "BLE001", "DTZ003", "DTZ011", "F401", "I001", "RUF022", "RUF100", "UP007", "UP035"]

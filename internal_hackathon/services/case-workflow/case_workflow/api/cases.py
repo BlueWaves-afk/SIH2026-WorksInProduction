@@ -1,3 +1,1 @@
-"""Queue, detail, acknowledge, visit, refer, resolve."""
-
-# TODO(M5)
+"""Case routes are mounted by the unified backend."""

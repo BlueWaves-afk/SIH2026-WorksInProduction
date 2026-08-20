@@ -1,3 +1,6 @@
-"""soil adapter — mock. Signal model v2 (FDI-aligned). See design/signal_model_fdi_aligned.md."""
+from .._common import MockSignalAdapter
 
-# TODO(M3)
+
+class SoilMockAdapter(MockSignalAdapter):
+    def __init__(self):
+        super().__init__("soil", [{"metric": "soil_water_holding_capacity", "value": "medium", "unit": "class"}])

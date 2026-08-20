@@ -1,3 +1,5 @@
-"""FastAPI router mounted into the M1 gateway."""
+"""FastAPI integration hook; the unified backend owns route mounting."""
 
-# TODO(M7)
+from fastapi import APIRouter
+
+router = APIRouter()

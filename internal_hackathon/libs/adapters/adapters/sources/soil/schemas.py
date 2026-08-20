@@ -1,3 +1,5 @@
-"""soil adapter — schemas. Signal model v2 (FDI-aligned). See design/signal_model_fdi_aligned.md."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class SoilObservation(BaseModel):
+    water_holding_capacity: str

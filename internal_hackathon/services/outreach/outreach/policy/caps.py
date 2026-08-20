@@ -1,3 +1,5 @@
-"""Per-farmer daily/weekly ceiling (alert fatigue)."""
+"""Per-farmer alert caps."""
 
-# TODO(M9)
+
+def within_cap(sent_today: int, cap: int = 2) -> bool:
+    return sent_today < cap

@@ -1,3 +1,6 @@
-"""bhuvan adapter — mock. See module_3 spec §4."""
+from .._common import MockSignalAdapter
 
-# TODO(M3)
+
+class BhuvanMockAdapter(MockSignalAdapter):
+    def __init__(self):
+        super().__init__("bhuvan", [{"metric": "village_coordinates", "value": {"lat": 20.0, "lon": 73.8}, "unit": "geojson"}])

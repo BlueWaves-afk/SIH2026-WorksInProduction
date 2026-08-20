@@ -24,7 +24,7 @@ Start with [`design/masterspecv1.md`](design/masterspecv1.md), then
 
 | # | Module | Location | Spec |
 |---|---|---|---|
-| 1 | Platform Core & Data Layer | `services/platform-core` | [spec](design/module_1_platform_core.md) |
+| 1 | Platform Core & Data Layer | `services/backend` | [spec](design/module_1_platform_core.md) |
 | 2 | Identity, Consent & Privacy | `libs/identity-consent` | [spec](design/module_2_identity_consent_privacy.md) |
 | 3 | Ingestion & Government Adapters | `libs/adapters` | [spec](design/module_3_ingestion_adapters.md) |
 | 4 | Explainable Scoring Engine | `services/scoring-engine` | [spec](design/module_4_scoring_engine.md) |
@@ -34,14 +34,19 @@ Start with [`design/masterspecv1.md`](design/masterspecv1.md), then
 | 8 | Frontend Apps | `apps/*`, `packages/ui-kit` | [spec](design/module_8_frontend_apps.md) |
 | 9 | Outreach Automation & Channels | `services/outreach` | [spec](design/module_9_outreach_automation.md) |
 
-## The one rule that makes parallel work possible
+## Runtime architecture rule
 
-**Everything crosses module boundaries through the shared contracts in
-`services/platform-core/app/schemas/`.** They are the integration boundary. Import them, code
-against them, and mock the other side. Never reach into another module's internals. The current
-scaffold intentionally keeps government adapters, notification providers, ORM tables, and the AI
-copilot behind explicit TODO boundaries; the pure M4 engine and M3 replay/core contracts are the
-first runnable slices.
+**`services/backend` is the only FastAPI composition root.** It owns the API gateway,
+SQLAlchemy/Alembic database boundary, Supabase JWT verification, consent enforcement,
+orchestration, case workflow, notifications, and background workers. The pure packages remain
+isolated: `libs/adapters` produces transport DTOs, `services/scoring-engine` computes FDI v2
+without I/O, and `services/ai-copilot` produces draft-only cited briefs. The former
+`services/platform-core` app is retained as contract/reference material during migration and
+its runtime entrypoint is retired and must not be started as a second server. See [ADR-001](design/adr_001_unified_backend.md).
+
+The backend's canonical HTTP contracts live in `services/backend/app/schemas/`; pure module
+contracts live in their owning packages. Never create another server or duplicate scoring rules
+inside an endpoint.
 
 ```
 Observation → M3 produces, M4 consumes
@@ -63,6 +68,13 @@ make PYTHON=.venv/bin/python install
 # Frontend (Node 20+)
 npm install
 npm run dev --workspace apps/farmer-pwa
+
+# Apply Supabase/Postgres migrations (copy .env.local.example first)
+cd services/backend
+alembic upgrade head
+
+# Render/container deployment (Docker context is internal_hackathon)
+docker build -f infra/docker/backend.Dockerfile .
 ```
 
 ## Layout
@@ -70,8 +82,8 @@ npm run dev --workspace apps/farmer-pwa
 ```
 apps/        farmer-pwa, officer-dashboard          (M8)
 packages/    ui-kit                                  (M8)
-services/    platform-core, scoring-engine,          (M1, M4, M5,
-             case-workflow, notification, ai-copilot,  M6, M7, M9)
+services/    backend, platform-core, scoring-engine, (M1, M4, M5,
+             case-workflow, notification, ai-copilot, M6, M7, M9)
              outreach
 libs/        identity-consent, adapters              (M2, M3)
 fixtures/    90-day replay datasets + scenarios      (M3)

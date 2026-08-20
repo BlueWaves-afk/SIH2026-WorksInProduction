@@ -1,3 +1,6 @@
-"""bhuvan adapter — real. See module_3 spec §4."""
+from .._common import ConfiguredRealAdapter
 
-# TODO(M3)
+
+class BhuvanRealAdapter(ConfiguredRealAdapter):
+    def __init__(self, endpoint: str | None = None):
+        super().__init__("bhuvan", endpoint)

@@ -1,3 +1,1 @@
-"""POST /notifications/dispatch (called by M5)."""
-
-# TODO(M6)
+"""Dispatch route is mounted by the unified backend."""

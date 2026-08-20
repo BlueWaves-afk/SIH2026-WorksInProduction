@@ -1,21 +1,13 @@
-"""FastAPI app factory — mounts every module's router. See module_1 spec §4."""
-from fastapi import FastAPI
+"""Retired runtime entrypoint.
 
-from app.api.v1.router import api_router
-from app.config import settings
-
-
-def create_app() -> FastAPI:
-    app = FastAPI(title="Platform API", version="0.1.0")
-    # TODO(M1): observability middleware (request id, structured logging)
-    # TODO(M1): exception handlers -> ErrorEnvelope
-    app.include_router(api_router, prefix="/api/v1")
-    return app
+``services/backend`` is the only deployable FastAPI application. This package
+still carries type/reference material used by the design docs, but starting it
+as a second service would create split-brain API, schema, and auth behaviour.
+"""
 
 
-app = create_app()
+def create_app():
+    raise RuntimeError("platform-core is a reference package; run services/backend/app/main.py")
 
 
-@app.get("/healthz", tags=["ops"])
-async def healthz() -> dict[str, str]:
-    return {"status": "ok", "env": settings.env}
+app = None

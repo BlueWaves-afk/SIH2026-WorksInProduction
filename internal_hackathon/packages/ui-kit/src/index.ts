@@ -7,6 +7,7 @@ export * from "./components/Button";
 export * from "./components/CaseCard";
 export * from "./components/ConsentToggle";
 export * from "./components/DriverPictogramCard";
+export * from "./components/GeoMap";
 export * from "./components/IconPicker";
 export * from "./components/KpiTile";
 export * from "./components/MapWrapper";

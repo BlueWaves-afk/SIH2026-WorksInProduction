@@ -6,7 +6,7 @@
 
 ### M8 — Frontend Apps
 
-- [x] Added typed farmer API client with a labelled replay-fixture fallback while M1 endpoints are unavailable.
+- [x] Added typed farmer API client with replay fixtures restricted to explicit demo mode; production failures remain visible and retryable.
 - [x] Built farmer onboarding flow with language, crop, season and irrigation pickers.
 - [x] Built conservative consent controls for storage, officer contact, analytics and the optional repayment window.
 - [x] Built farmer status card rendering the upstream `RiskEvent` band, score, confidence, expiry and disclaimer without recomputing them.
@@ -15,12 +15,12 @@
 - [x] Built farmer mandi comparison view from typed quote data.
 - [x] Built farmer settings/re-consent flow and local demo onboarding state.
 - [x] Built offline detection, honest last-known-result banner and stale-status badge.
-- [x] Built typed officer queue client with replay-fixture fallback.
+- [x] Built typed officer queue client with replay fixtures restricted to explicit demo mode.
 - [x] Built officer ranked-case presentation, band filter and case selection.
 - [x] Built officer case detail with shared score explanation and M5 action controls.
-- [x] Built officer district KPI strip and map integration placeholder.
+- [x] Built officer district KPI strip and an interactive village-centroid MapLibre map without exposing farm coordinates.
 - [x] Built officer copilot panel with cited scheme references, draft-message review warning and fixed-action display.
-- [x] Added shared UI-kit tokens and reusable primitives: buttons, band chips, traffic-light disc, driver cards, score breakdown, action cards, case cards, consent toggles, pickers, KPI tiles, map placeholder, offline banner and stale badge.
+- [x] Added shared UI-kit tokens and reusable primitives: buttons, band chips, traffic-light disc, driver cards, score breakdown, action cards, case cards, consent toggles, pickers, KPI tiles, lazy MapLibre maps, offline banner and stale badge.
 
 ### M7 — AI and Agentic Copilot
 
@@ -62,16 +62,62 @@
 - [x] Added rainbow gradient rings around farmer/profile avatars, live alert thumbnails, timeline avatars and copilot field pins; verified the imagery and rings across home, alerts, profile and copilot screens at 390×844.
 - [x] Replaced onboarding crop, season and irrigation emojis with Lucide icons, changed selected farm options from black fills to rainbow-outline cards, and reset onboarding scroll to the top on each step.
 - [x] Replaced shield brand marks with the project-local transparent rainbow KisanSetu three-leaf logo across farmer home, onboarding and inner headers.
+- [x] Replaced the nearby-market illustration with an interactive public-market map and kept the farmer marker deliberately approximate.
+- [x] Excluded the route-level map engine from PWA precache, reducing the install shell from roughly 1.8 MB to 0.8 MB while preserving runtime caching.
+
+### Officer workspace — verified
+
+- [x] Rebuilt the officer dashboard as a reference-inspired split workspace with a slim navigation rail, document-style case report, searchable case table, driver comparison chart and persistent copilot thread.
+- [x] Preserved officer workflows for case selection, acknowledgement, resolution, copilot briefing, cited references and draft-message approval.
+- [x] Added responsive collapse for phone-sized officer views and replaced the officer rail shield mark with the project-local KisanSetu logo.
+
+### Unified backend — verified
+
+- [x] Selected `services/backend` as the only FastAPI composition root; documented the decision in `design/adr_001_unified_backend.md`.
+- [x] Added Supabase-aware settings with `.env.local` precedence, JWT verification, local-only fixture auth, CORS, request IDs, structured error fallback, `/healthz` and `/readyz`.
+- [x] Added the complete master-spec API surface: profiles, observations, recalculation, risk-event listing, mandi comparison, replay, cases, district analytics and copilot brief.
+- [x] Added consent ledger updates, storage/contact checks, token generation, encrypted-or-hashed phone storage, data export/delete routes and audit events.
+- [x] Wired canonical M3 replay scenarios to the pure FDI v2 scorer, including TTL conversion, Red flagship flow and stale-data suppression.
+- [x] Added case state transitions, fixed resolution codes, status history and SLA timestamps.
+- [x] Added consent-aware outbox delivery with idempotency, quiet hours, retry/dead-letter handling, delivery attempts and provider webhook/status routes.
+- [x] Added interchangeable mock/real adapter contracts for IMD, Agmarknet, AgriStack, Bhashini, Bhuvan, MSP, Sentinel-2 and soil sources.
+- [x] Implemented HTTP-backed IMD and AGMARKNET adapters with provider field parsing, API-key headers, timeouts, circuit health, source-specific TTLs and fail-closed errors.
+- [x] Added opt-in live ingestion health/preview endpoints and a live recalculation mode that persists de-duplicated weather/market observations before invoking the canonical FDI scorer.
+- [x] Added MockTransport coverage for official IMD rainfall fields, AGMARKNET modal/baseline/MSP parsing, missing endpoints, and the live provider-to-score API path.
+- [x] Added an API integration test covering profile → replay → Red event → officer case → copilot → resolution and stale-data suppression.
+- [x] Added frontend API-base/environment support and adapted farmer/officer clients to the paginated backend contracts.
+- [x] Added browser-safe Supabase session/token integration to both apps; only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are accepted client-side.
+- [x] Added farmer phone-OTP and officer email/password session gates, role guards and explicit production connection states.
+- [x] Bound opaque farmer resources to the Supabase Auth subject; possession of a farmer token no longer authorizes access.
+- [x] Added cached Supabase JWKS verification for asymmetric signing keys with a legacy HS256 fallback, issuer/audience checks and key-rotation refresh.
+- [x] Removed the unused legacy JWT dependency module so the hardened Supabase verifier is the only backend authentication path.
+- [x] Restricted role and district claims to server-controlled custom claims/app metadata; user-editable metadata cannot promote a farmer.
+- [x] Enforced JWT district scope across case, risk and analytics reads and added cross-district denial tests.
+- [x] Retired the platform-core FastAPI entrypoint; it cannot be deployed as a second runtime.
+- [x] Added farmer-token ownership to observations so export/delete cannot remove another farmer's village data.
+- [x] Added a canonical FDI facade for legacy scorer imports; old v1 rules are no longer executable.
+- [x] Added error envelopes for HTTP/validation failures and fixed Alembic URL handling for Supabase async URLs.
+- [x] Added SQLite-safe PostGIS migration guards and verified `alembic upgrade head` on a local fixture.
+- [x] Added case deduplication, assignment on acknowledgement, SLA breach audit, reopen policy and an outreach cycle endpoint.
+- [x] Added consent-aware band-change/sustained-Red outreach, quiet-hours fallback, daily caps, inbound SMS/missed-call/IVR handling and signed provider webhooks.
+- [x] Added scheduled retention cleanup for old observations and completed outbox messages while retaining audit history.
+- [x] Added mobile-farmer and desktop-officer Playwright journeys and wired them into CI.
+- [x] Upgraded Vite, Vitest and Playwright to audited versions and deduplicated the JavaScript dependency tree.
 
 ## Verification run
 
 - `make PYTHON=.venv/bin/python lint` — passed.
-- `make PYTHON=.venv/bin/python test` — 16 Python tests passed; all three frontend workspace test suites passed.
+- Full Python package test run — 56 tests passed with an isolated SQLite database.
 - `npm run lint` — farmer PWA, officer dashboard and UI kit TypeScript checks passed.
 - `npm run test` — farmer PWA, officer dashboard and UI kit test suites passed.
 - `npm run build` — farmer PWA and officer dashboard production builds passed.
-- `npm audit --omit=dev` — zero production dependency vulnerabilities.
+- `npm run test:e2e` — mobile farmer and desktop officer browser journeys passed.
+- `npm audit` — zero production or development dependency vulnerabilities.
+- Live adapter tests — IMD/AGMARKNET provider parsing and live-score persistence path passed with HTTP mock transports; no provider credentials were used.
+- CI now installs the unified backend, runs the monorepo checks and executes both Playwright journeys.
+- Unified backend tests — 9 tests passed, including Auth ownership, role-claim and district-isolation cases.
+- Alembic migration smoke test — initial schema through the unified backend revision passed on SQLite; PostGIS geometry is enabled only on PostgreSQL/Supabase.
 
 ## Design-spec comparison
 
-The implemented slice covers the M7/M8 MVP presentation and safety boundaries that can run before M1/M2/M5/M6 APIs are complete. It deliberately uses replay fixtures and keeps the API seam typed. It does not claim that backend persistence, authentication, real map tiles, Workbox service-worker caching, live Bhashini, live RAG retrieval, or M7 HTTP mounting are built; those are not recorded here until implemented and verified.
+The implemented slice covers the M1/M2/M3/M4/M5/M6/M7/M8/M9 MVP seams in the unified backend and the mobile presentation layer. It still deliberately uses mock providers/replay fixtures by default. It does not claim live government credentials, production Supabase deployment, live Bhashini, pgvector scheme ingestion, or live provider delivery until those are configured and verified in their target environments.

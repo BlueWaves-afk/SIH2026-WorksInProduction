@@ -13,6 +13,7 @@ from .bands import apply_hysteresis, band_from_score
 from .confidence import compute_confidence, suppress_escalation
 from .constants import MODEL_VERSION, SCORE_DISCLAIMER, VULN_BASE, VULN_MAX, VULN_MIN
 from .drivers import contributors_from_scores, select_top_drivers
+from .errors import MissingRequiredContextError
 from .guardrails import assert_safe_metric
 from .rules.engagement_flag import engagement_context_flags
 from .rules.farmer_report import score_farmer_reported_shock
@@ -41,8 +42,25 @@ def compute_risk_event(
     """Compute the deterministic FDI-aligned event without I/O or external calls."""
     now = as_of or datetime.now(UTC)
     prior_events = prior_events or []
+
+    # Minimum context to score at all (masterspec §4.1). Refuse rather than guess.
+    missing = [
+        name for name, value in (
+            ("village_id", farmer.village_id),
+            ("crop", farmer.crop),
+            ("irrigation_type", farmer.irrigation_type),
+            ("sowing_date", farmer.sowing_date),
+        ) if value in (None, "")
+    ]
+    if missing:
+        raise MissingRequiredContextError(f"missing required farmer context: {', '.join(missing)}")
+
     for observation in observations:
         assert_safe_metric(observation.metric, observation.value)
+
+    # Order-independence: identical inputs must produce an identical event
+    # regardless of the order the caller happened to collect them in.
+    observations = sorted(observations, key=lambda o: (o.metric, o.observed_at, o.source))
 
     shock_scores: list[SubScoreResult] = [
         *score_rainfall_signals(observations, now),

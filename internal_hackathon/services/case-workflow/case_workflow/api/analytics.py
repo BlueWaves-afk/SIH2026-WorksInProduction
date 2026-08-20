@@ -1,3 +1,1 @@
-"""GET /analytics/district — aggregate only."""
-
-# TODO(M5)
+"""The aggregate endpoint is mounted by the unified backend."""

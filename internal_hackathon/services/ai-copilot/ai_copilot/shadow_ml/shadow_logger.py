@@ -1,3 +1,5 @@
-"""Writes shadow_predictions only."""
+"""Writes shadow predictions without feeding the decision path."""
 
-# TODO(M7)
+
+def log_prediction(store: list[dict], prediction: dict) -> None:
+    store.append({"prediction": prediction, "acting": False})

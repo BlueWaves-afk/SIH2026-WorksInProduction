@@ -1,3 +1,6 @@
-"""agristack adapter — mock. See module_3 spec §4."""
+from .._common import MockProfileAdapter
 
-# TODO(M3)
+
+class AgriStackMockAdapter(MockProfileAdapter):
+    def __init__(self):
+        super().__init__()

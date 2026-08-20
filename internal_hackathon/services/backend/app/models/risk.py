@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, Integer, JSON, String
 from app.core.database import Base
 
 class RiskEvent(Base):
@@ -14,5 +16,7 @@ class RiskEvent(Base):
     contributors = Column(JSON)
     action_ids = Column(JSON)
     model_version = Column(String)
+    evaluated_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime)
-
+    disclaimer = Column(String, nullable=False, default="This is not a credit, loan-default, or insurance score.")
+    context_flags = Column(JSON, default=list)

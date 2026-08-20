@@ -1,3 +1,1 @@
-"""GET /notifications/{event_id}/status."""
-
-# TODO(M6)
+"""Status route is mounted by the unified backend."""

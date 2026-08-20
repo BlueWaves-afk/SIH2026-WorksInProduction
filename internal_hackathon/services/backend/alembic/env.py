@@ -24,7 +24,10 @@ from app.models import Base
 # add your model's MetaData object here
 # for 'autogenerate' support
 target_metadata = Base.metadata
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
+database_url = settings.database_url
+if database_url.startswith('postgresql+asyncpg://'):
+    database_url = database_url.replace('postgresql+asyncpg://', 'postgresql+psycopg://', 1)
+config.set_main_option('sqlalchemy.url', database_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

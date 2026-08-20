@@ -1,3 +1,6 @@
-"""bhuvan adapter — schemas. See module_3 spec §4."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class Coordinate(BaseModel):
+    lat: float
+    lon: float

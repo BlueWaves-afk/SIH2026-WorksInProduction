@@ -1,3 +1,1 @@
-"""/consent/* routes."""
-
-# TODO(M2)
+"""Consent routes are mounted by ``services/backend``."""

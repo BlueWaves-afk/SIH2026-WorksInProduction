@@ -1,5 +1,7 @@
 # Module 0 — Architecture Overview & Module Map
 
+> Runtime decision: see [ADR-001 — Unified backend composition root](adr_001_unified_backend.md). `services/backend` is the only FastAPI application; `services/platform-core` is a contract/reference package during migration.
+
 Authoritative decomposition of the platform (working name TBD) described in `masterspecv1.md`.
 This document defines module boundaries, the dependency graph, and the shared interface contracts
 that every module spec must conform to. Read `masterspecv1.md` first, then this file.

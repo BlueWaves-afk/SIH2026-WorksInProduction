@@ -1,3 +1,6 @@
-"""bhashini adapter — mock. See module_3 spec §4."""
+from .._common import MockVoiceAdapter
 
-# TODO(M3)
+
+class BhashiniMockAdapter(MockVoiceAdapter):
+    def __init__(self):
+        super().__init__()

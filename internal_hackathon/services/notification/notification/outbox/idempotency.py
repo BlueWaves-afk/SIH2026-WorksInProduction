@@ -1,3 +1,7 @@
-"""Dedupe key derivation + check."""
+"""Stable idempotency keys for outbox writes."""
 
-# TODO(M6)
+import hashlib
+
+
+def idempotency_key(*parts: str) -> str:
+    return hashlib.sha256(":".join(parts).encode("utf-8")).hexdigest()

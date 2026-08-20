@@ -99,6 +99,8 @@ export interface MandiQuote {
   modal_price: number;
   change_pct: number;
   verified_at: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ConsentState {

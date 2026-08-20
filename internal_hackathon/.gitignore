@@ -13,6 +13,8 @@ htmlcov/
 
 # Node
 node_modules/
+test-results/
+playwright-report/
 dist/
 build/
 .vite/
@@ -21,7 +23,12 @@ build/
 # Env & secrets
 .env
 .env.*
+!.env.local.example
 !.env.example
+
+# Local development databases
+*.db
+*.db-*
 
 # OS / editor
 .DS_Store

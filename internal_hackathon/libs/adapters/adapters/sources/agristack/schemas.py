@@ -1,3 +1,7 @@
-"""agristack adapter — schemas. See module_3 spec §4."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class FarmerPrefill(BaseModel):
+    farmer_ref: str
+    village_id: str
+    crop: str | None = None

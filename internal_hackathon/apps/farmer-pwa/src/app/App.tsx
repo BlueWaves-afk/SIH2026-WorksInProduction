@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { type ConsentState, type CopilotMessage } from "ui-kit";
 import "ui-kit/styles.css";
 import { loadFarmerStatus, submitFarmerProfile, type FarmerStatus } from "../api/client";
+import { demoMode } from "../auth/supabase";
 import { describeAge } from "../features/offline/statusCache";
 import { demoActionCard, demoAlerts, demoMandis, demoRiskEvent } from "../demo";
 import { ShieldDock, ShieldHome } from "./ShieldHome";
@@ -72,7 +73,9 @@ export function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [onboarded, setOnboarded] = useState(() => window.localStorage.getItem("farmer-onboarded") === "true");
   const [consent, setConsent] = useState<ConsentState>(initialConsent);
-  const [status, setStatus] = useState<FarmerStatus>({ risk_event: demoRiskEvent, action_card: demoActionCard, mandis: demoMandis, cached_at: new Date().toISOString(), source: "demo-fixture" });
+  const [status, setStatus] = useState<FarmerStatus | null>(() => demoMode ? { risk_event: demoRiskEvent, action_card: demoActionCard, mandis: demoMandis, cached_at: new Date().toISOString(), source: "demo-fixture" } : null);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [submitting, setSubmitting] = useState(false);
   const [messages, setMessages] = useState<CopilotMessage[]>(() => starterMessages("en"));
@@ -87,7 +90,7 @@ export function App() {
     const onOffline = () => setOnline(false);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    if (onboarded) void loadFarmerStatus().then(setStatus);
+    if (onboarded) void refreshStatus();
     return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
   }, [onboarded]);
 
@@ -95,9 +98,11 @@ export function App() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [screen]);
 
   // Say exactly where the status came from — never imply "live" when it is not.
-  const statusLabel = status.source === "api" && online
-    ? tr("home.updated")
-    : `${tr("home.offline")} · ${describeAge(status.cached_at)}`;
+  const statusLabel = status
+    ? status.source === "api" && online
+      ? tr("home.updated")
+      : `${tr("home.offline")} · ${describeAge(status.cached_at)}`
+    : "";
 
   const actionCard = localizedActionCard(locale);
   const updateConsent = (key: keyof ConsentState) => (value: boolean) => setConsent((current) => ({ ...current, [key]: value, ...(key === "storage" && !value ? { contact: false, analytics: false, due_window: false } : {}) }));
@@ -110,20 +115,35 @@ export function App() {
   async function completeOnboarding(result: OnboardingResult) {
     setConsent(result.consent);
     setSubmitting(true);
+    setOnboardingError(null);
     try {
-      await submitFarmerProfile({
+      const created = await submitFarmerProfile({
         locale,
         crop: result.crop,
         season: result.season,
         irrigation: result.irrigation,
         consent_flags: result.consent,
       });
-    } catch {
-      /* The status view stays available even if the network is unavailable. */
+      window.localStorage.setItem("kisansetu.farmer_token", created.farmer_token);
+    } catch (reason) {
+      if (!demoMode) {
+        setOnboardingError(reason instanceof Error ? reason.message : "Your profile could not be saved.");
+        setSubmitting(false);
+        return;
+      }
     }
     window.localStorage.setItem("farmer-onboarded", "true");
     setOnboarded(true);
     setSubmitting(false);
+  }
+
+  async function refreshStatus() {
+    setDataError(null);
+    try {
+      setStatus(await loadFarmerStatus());
+    } catch (reason) {
+      setDataError(reason instanceof Error ? reason.message : "Your support status is unavailable.");
+    }
   }
 
   function replyTo(text: string) {
@@ -131,7 +151,7 @@ export function App() {
     if (!question) return;
     const lower = question.toLowerCase();
     const answer = lower.includes("why") || lower.includes("का") || lower.includes("का?")
-      ? status.risk_event.contributors.slice(0, 2).map((driver) => driver.explanation).join(". ") + "."
+      ? status ? status.risk_event.contributors.slice(0, 2).map((driver) => driver.explanation).join(". ") + "." : "Your latest status is not available yet."
       : lower.includes("market") || lower.includes("mandi") || lower.includes("बाजार")
         ? "I can compare nearby market prices. Open Nearby markets to review the latest available quotes before deciding."
         : "The safest next step is to share your crop condition with the agriculture officer. I can show the approved action plan or explain any driver.";
@@ -148,10 +168,14 @@ export function App() {
     return (
       <LocaleProvider locale={locale}>
         <main className="app-shell farmer-shell shield-farmer-shell"><div className="app-container">
-          <ShieldOnboarding locale={locale} onLocale={setLocale} onComplete={(result) => void completeOnboarding(result)} submitting={submitting} />
+          <ShieldOnboarding locale={locale} onLocale={setLocale} onComplete={(result) => void completeOnboarding(result)} submitting={submitting} error={onboardingError} />
         </div></main>
       </LocaleProvider>
     );
+  }
+
+  if (!status) {
+    return <main className="auth-page"><section className="auth-card"><p className="auth-kicker">FARMER SUPPORT</p><h1>{dataError ? "We could not load your status." : "Loading your latest status…"}</h1>{dataError && <><p>{dataError}</p><button className="auth-submit" onClick={() => void refreshStatus()}>Try again</button></>}</section></main>;
   }
 
   return (

@@ -45,7 +45,7 @@ class FarmerContext(BaseModel):
     farmer_token: str
     village_id: str
     crop: str
-    sowing_date: date
+    sowing_date: date | None = None
     irrigation_type: Literal["rainfed", "partial", "assured"] = "rainfed"
     area_band: Literal["<1", "1-2", ">2"] | None = None
     secondary_crop: str | None = None

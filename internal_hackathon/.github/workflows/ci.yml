@@ -18,17 +18,20 @@ jobs:
             internal_hackathon/services/case-workflow \
             internal_hackathon/services/notification \
             internal_hackathon/services/ai-copilot \
-            internal_hackathon/services/outreach; do
+            internal_hackathon/services/outreach \
+            internal_hackathon/services/backend; do
             pip install -e "${package}[dev]"
           done
-      - run: ruff check internal_hackathon/services internal_hackathon/libs
-      - run: pytest internal_hackathon/services internal_hackathon/libs -q
+      - run: ruff check --config internal_hackathon/ruff.toml internal_hackathon/services internal_hackathon/libs
+      - run: PYTHONPATH=internal_hackathon/services/ai-copilot:internal_hackathon/services/scoring-engine:internal_hackathon/libs/adapters:internal_hackathon/libs/identity-consent:internal_hackathon/services/notification:internal_hackathon/services/case-workflow:internal_hackathon/services/outreach:internal_hackathon/services/backend pytest internal_hackathon/services internal_hackathon/libs -q
 
   node:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "20" }
+        with: { node-version: "22" }
       - run: npm ci --prefix internal_hackathon || npm install --prefix internal_hackathon
       - run: npm run build --prefix internal_hackathon
+      - run: npx --prefix internal_hackathon playwright install --with-deps chromium
+      - run: npm run test:e2e --prefix internal_hackathon

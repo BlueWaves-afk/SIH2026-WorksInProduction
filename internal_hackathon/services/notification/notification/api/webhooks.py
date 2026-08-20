@@ -1,3 +1,1 @@
-"""Provider delivery-receipt callbacks."""
-
-# TODO(M6)
+"""Provider webhook route is mounted by the unified backend."""

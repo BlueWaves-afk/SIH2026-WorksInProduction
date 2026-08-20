@@ -1,3 +1,6 @@
-"""sentinel2 adapter — schemas. Signal model v2 (FDI-aligned). See design/signal_model_fdi_aligned.md."""
+from pydantic import BaseModel
 
-# TODO(M3)
+
+class CropStressObservation(BaseModel):
+    ndvi_anomaly_pct: float
+    ndwi_anomaly_pct: float = 0
