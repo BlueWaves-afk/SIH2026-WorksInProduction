@@ -1,0 +1,11 @@
+{
+    "normal": [
+        {"village_id": "V123", "metric": "rainfall_deviation_pct", "value": 5, "quality": "high", "ttl": 48}
+    ],
+    "drought": [
+        {"village_id": "V123", "metric": "rainfall_deviation_pct", "value": -28, "quality": "high", "ttl": 48}
+    ],
+    "stale": [
+        {"village_id": "V123", "metric": "rainfall_deviation_pct", "value": -28, "quality": "high", "ttl": -24}
+    ]
+}

@@ -1,0 +1,10 @@
+{
+  "scenario": "stale_data",
+  "description": "Last-good weather and price feeds past their TTL",
+  "days": 90,
+  "signals": [
+    {"source": "imd", "metric": "rainfall_deviation_pct", "value": -30, "unit": "percent", "ttl_days": 2, "age_days": 20},
+    {"source": "agmarknet", "metric": "mandi_price_deviation_pct", "value": {"deviation_pct": -25, "below_msp": true}, "unit": "percent", "ttl_days": 3, "age_days": 20},
+    {"source": "farmer_opt_in", "metric": "due_window", "value": {"days_to_due": 14, "amount_band": "medium"}, "unit": "days", "ttl_days": 7, "age_days": 20}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+    "normal": [
+        {"commodity": "cotton", "mandi_id": "M1", "modal_price": 7000, "deviation_pct": 2, "quality": "high"}
+    ],
+    "crash": [
+        {"commodity": "cotton", "mandi_id": "M1", "modal_price": 5500, "deviation_pct": -18, "quality": "high"}
+    ]
+}
