@@ -1,0 +1,3 @@
+export function IconPicker<T extends string>({ label, options, value, onChange }: { label: string; options: Array<{ value: T; label: string; icon: string }>; value?: T; onChange: (value: T) => void }) {
+  return <fieldset style={{ border: 0, padding: 0, margin: 0 }}><legend><strong>{label}</strong></legend><div className="choice-grid">{options.map((option) => <button key={option.value} type="button" className={`choice ${value === option.value ? "selected" : ""}`} onClick={() => onChange(option.value)} aria-pressed={value === option.value}><span className="choice-icon" aria-hidden="true">{option.icon}</span>{option.label}</button>)}</div></fieldset>;
+}

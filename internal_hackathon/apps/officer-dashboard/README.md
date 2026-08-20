@@ -14,4 +14,6 @@ Import cross-module types from `services/platform-core/app/schemas/` — never r
 
 ## Status
 
-Scaffolded. See the spec's §11 for acceptance criteria and §12 for the MVP boundary.
+First vertical slice implemented on `user_experience`: ranked queue, band filter, case detail, shared score
+explanation, KPI strip, map placeholder and cited copilot panel with replay fixture fallback. See the root
+`tasks.md` for verified build output and the spec's §11 for remaining acceptance criteria.

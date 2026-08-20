@@ -14,4 +14,6 @@ Import cross-module types from `services/platform-core/app/schemas/` — never r
 
 ## Status
 
-Scaffolded. See the spec's §11 for acceptance criteria and §12 for the MVP boundary.
+First vertical slice implemented on `user_experience`: onboarding, consent, status/why/action/mandi/settings
+views, typed API seam, replay fixture fallback and honest offline/stale rendering. See the root `tasks.md`
+for verified build output and the spec's §11 for remaining acceptance criteria.
