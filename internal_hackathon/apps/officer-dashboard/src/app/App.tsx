@@ -47,7 +47,7 @@ export function App() {
 
   return (
     <main className="app-shell"><div className="app-container">
-      <header className="app-header"><div><p className="eyebrow">M8 officer cockpit · Nashik district</p><h1>Support queue</h1><p className="subtitle">Rank and close the cases returned by M5. This dashboard does not recalculate score or confidence.</p></div><div className="stack" style={{ alignItems: "flex-end", gap: 5 }}><BandChip band="green" /> <span className="small muted">{online ? "Connected" : "Offline · last queue"} · {source === "api" ? "M1 API" : "replay fixture"}</span></div></header>
+      <header className="app-header"><div><p className="eyebrow">M8 officer cockpit · Nashik district</p><h1>Support queue</h1><p className="subtitle">Rank and close the cases returned by M5. This dashboard does not recalculate score or confidence.</p></div><div className="stack" style={{ alignItems: "flex-end", gap: 5 }}><span className="band-chip green">Queue ready</span><span className="small muted">{online ? "Connected" : "Offline · last queue"} · {source === "api" ? "M1 API" : "replay fixture"}</span></div></header>
       {!online && <div className="notice warning" role="status">Network unavailable. The last loaded queue remains visible. Write actions are disabled until the server confirms them.</div>}
       <div className="grid grid-3" style={{ marginBottom: 18 }}><KpiTile label="Open cases" value={openCount} hint="M5 case status" /><KpiTile label="Red needing review" value={redCount} hint="Shown first by M1 ranking" /><KpiTile label="Acknowledged / closed" value={`${acknowledged}/${cases.length || 0}`} hint="Current district slice" /></div>
       <div className="grid grid-2" style={{ alignItems: "start" }}>
