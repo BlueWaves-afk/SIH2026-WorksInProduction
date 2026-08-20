@@ -46,6 +46,19 @@
 - [x] Refined shared surfaces, spacing, colors, focus states, bottom navigation and mobile breakpoints across both apps.
 - [x] Replaced visible fixture-source wording with user-facing source labels such as IMD rainfall feed, Agmarknet market feed and Sentinel-2 crop observation.
 
+### Shield-style farmer experience — verified
+
+- [x] Rebuilt the farmer home as a location-aware alert feed with KisanSetu branding, a live support strip, filter chips and horizontally scrollable update cards.
+- [x] Added an original, project-owned cotton-field alert image and wired it into the alert and detail surfaces.
+- [x] Replaced the old fixed tab bar with a compact floating four-action dock using accessible icons and gradient alert accents.
+- [x] Built a photographic field-alert detail screen with an explainable signal timeline, confidence and support-only guardrail.
+- [x] Built a reviewed three-step action-plan screen with explicit completion controls and copilot handoff.
+- [x] Built a nearby-market experience with search, a lightweight visual map, market pins and comparable price rows.
+- [x] Rebuilt the copilot as a mobile conversation surface with field-signal context, quick prompts, voice affordance and a gradient message composer.
+- [x] Rebuilt profile, language, privacy and consent screens in the same mobile design system.
+- [x] Reworked onboarding with a KisanSetu introduction, agricultural signal artwork and Shield-style controls while preserving consent defaults.
+- [x] Added navigation scroll restoration, keyboard focus treatment and responsive behavior for a 390×844 mobile viewport.
+
 ## Verification run
 
 - `make PYTHON=.venv/bin/python lint` — passed.
@@ -53,6 +66,7 @@
 - `npm run lint` — farmer PWA, officer dashboard and UI kit TypeScript checks passed.
 - `npm run test` — farmer PWA, officer dashboard and UI kit test suites passed.
 - `npm run build` — farmer PWA and officer dashboard production builds passed.
+- `npm audit --omit=dev` — zero production dependency vulnerabilities.
 
 ## Design-spec comparison
 

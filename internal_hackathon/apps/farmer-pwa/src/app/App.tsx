@@ -1,20 +1,17 @@
 import { useEffect, useState } from "react";
 import {
-  ActionCardView,
   Button,
   ConsentToggle,
   IconPicker,
-  OfflineBanner,
-  ScoreBreakdown,
   SeasonWheel,
-  StaleBadge,
-  TrafficLightDisc,
   type ConsentState,
   type CopilotMessage,
 } from "ui-kit";
 import "ui-kit/styles.css";
 import { loadFarmerStatus, submitFarmerProfile, type FarmerStatus } from "../api/client";
 import { demoActionCard, demoMandis, demoRiskEvent } from "../demo";
+import { ShieldDock, ShieldHome } from "./ShieldHome";
+import { ShieldActionScreen, ShieldCopilotScreen, ShieldMarketScreen, ShieldMoreScreen, ShieldPrivacyScreen, ShieldStatusScreen } from "./ShieldScreens";
 
 type Screen = "home" | "why" | "action" | "copilot" | "mandi" | "settings" | "more";
 type Locale = "en" | "hi" | "mr";
@@ -70,7 +67,7 @@ function starterMessages(locale: Locale): CopilotMessage[] {
 }
 
 export function App() {
-  const [locale, setLocale] = useState<Locale>("mr");
+  const [locale, setLocale] = useState<Locale>("en");
   const [screen, setScreen] = useState<Screen>("home");
   const [onboarded, setOnboarded] = useState(() => window.localStorage.getItem("farmer-onboarded") === "true");
   const [crop, setCrop] = useState("cotton");
@@ -80,7 +77,7 @@ export function App() {
   const [status, setStatus] = useState<FarmerStatus>({ risk_event: demoRiskEvent, action_card: demoActionCard, mandis: demoMandis, cached_at: new Date().toISOString(), source: "demo-fixture" });
   const [online, setOnline] = useState(() => navigator.onLine);
   const [submitting, setSubmitting] = useState(false);
-  const [messages, setMessages] = useState<CopilotMessage[]>(() => starterMessages("mr"));
+  const [messages, setMessages] = useState<CopilotMessage[]>(() => starterMessages("en"));
   const [copilotInput, setCopilotInput] = useState("");
   const t = copy[locale];
 
@@ -94,8 +91,8 @@ export function App() {
   }, [onboarded]);
 
   useEffect(() => setMessages(starterMessages(locale)), [locale]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [screen]);
 
-  const stale = !online || Date.now() - new Date(status.cached_at).getTime() > 24 * 60 * 60 * 1000;
   const actionCard = localizedActionCard(locale);
   const updateConsent = (key: keyof ConsentState) => (value: boolean) => setConsent((current) => ({ ...current, [key]: value, ...(key === "storage" && !value ? { contact: false, analytics: false, due_window: false } : {}) }));
 
@@ -123,9 +120,10 @@ export function App() {
 
   if (!onboarded) {
     return (
-      <main className="app-shell farmer-shell"><div className="app-container">
-        <header className="app-header"><div><div className="mobile-topline"><span className="location-pill"><span className="location-dot" /> Private setup</span><span className="band-chip green">Works offline</span></div><h1>{t.welcome}</h1><p className="subtitle">A few taps to get a clear support status. You never need to type a long form.</p></div></header>
-        <div className="surface panel stack">
+      <main className="app-shell farmer-shell shield-farmer-shell"><div className="app-container">
+        <div className="shield-onboarding">
+        <header className="shield-onboarding-intro"><div className="shield-wordmark"><span className="shield-logo" aria-hidden="true">KS</span><span><strong>KISANSETU</strong><small>Farmer support network</small></span></div><p className="shield-setup-kicker">PRIVATE · WORKS OFFLINE</p><h1>Support that reaches you <em>before the situation gets harder.</em></h1><p>A few simple choices help us explain local crop, weather and market signals.</p><div className="shield-setup-orb" aria-hidden="true"><span>☁</span><span>₹</span><span>🌱</span></div></header>
+        <div className="surface panel stack shield-onboarding-card">
           <IconPicker label="Language / भाषा / भाषा निवडा" options={Object.entries(copy).map(([value, item]) => ({ value: value as Locale, label: item.name, icon: value === "mr" ? "अ" : value === "hi" ? "आ" : "A" }))} value={locale} onChange={setLocale} />
           <IconPicker label="What do you grow?" options={[...crops]} value={crop} onChange={setCrop} />
           <SeasonWheel value={season} onChange={setSeason} />
@@ -136,33 +134,24 @@ export function App() {
             <ConsentToggle label="Include me in anonymous trends" description="Only group results are used." value={consent.analytics} onChange={updateConsent("analytics")} />
             <ConsentToggle label="Share a coarse repayment window" description="Timing only; never an account or credit record." value={consent.due_window} onChange={updateConsent("due_window")} />
           </div>
-          <div className="notice">Your status is a support signal, not a credit, loan-default or insurance score.</div>
+          <div className="shield-safety-note"><span className="shield-plan-check">✓</span><span><strong>Support only</strong><small>Your status is never a credit, loan-default or insurance score.</small></span></div>
           <Button onClick={() => void completeOnboarding()} disabled={!consent.storage || submitting}>{submitting ? "Saving…" : "Continue"}</Button>
+        </div>
         </div>
       </div></main>
     );
   }
 
-  const pageTitle = screen === "home" ? t.welcome : screen === "why" ? t.why : screen === "action" ? t.action : screen === "copilot" ? t.ask : screen === "mandi" ? t.mandi : screen === "settings" ? t.settings : t.more;
   return (
-    <main className="app-shell farmer-shell"><div className="app-container">
-      <header className="app-header"><div className="mobile-topline"><span className="location-pill"><span className="location-dot" /> {status.risk_event.village_id}</span><div className="row"><StaleBadge stale={stale} label={t.offline} /><select className="select-control" aria-label="Language" value={locale} onChange={(event) => setLocale(event.target.value as Locale)}><option value="mr">मराठी</option><option value="hi">हिंदी</option><option value="en">English</option></select></div></div><h1>{pageTitle}</h1><p className="subtitle">{online ? t.updated : t.offline}</p></header>
-      <OfflineBanner online={online} cachedAt={status.cached_at} />
-      <div className="grid" style={{ marginTop: 18 }}>
-        {screen === "home" && <>
-          <section className="surface panel status-card status-hero"><TrafficLightDisc band={status.risk_event.band} score={status.risk_event.score} /><div><div className="row"><span className="eyebrow" style={{ margin: 0 }}>Current status</span><span className="spacer" /><StaleBadge stale={stale} /></div><h2>{status.risk_event.band === "red" ? "Needs support" : "Looking steady"}</h2><p className="subtitle">{status.risk_event.band === "red" ? t.statusRed : t.statusGreen}</p><div className="case-meta"><span>Confidence {Math.round(status.risk_event.confidence * 100)}%</span><span>Valid until {new Date(status.risk_event.expires_at).toLocaleDateString()}</span></div></div></section>
-          <section className="surface panel assistant-card"><div className="row"><span className="assistant-mark">✦</span><div><p className="eyebrow">Personal support</p><h2 style={{ marginBottom: 3 }}>{t.assistantTitle}</h2><p className="muted small" style={{ marginBottom: 0 }}>{t.assistantBody}</p></div></div><Button variant="secondary" onClick={() => setScreen("copilot")} style={{ marginTop: 16 }}>Open support chat <span aria-hidden="true">→</span></Button></section>
-          <div className="quick-actions"><button className="quick-action" onClick={() => setScreen("why")}><span className="quick-action-icon">◌</span><strong>{t.why}</strong></button><button className="quick-action" onClick={() => setScreen("action")}><span className="quick-action-icon">✓</span><strong>{t.action}</strong></button><button className="quick-action" onClick={() => setScreen("mandi")}><span className="quick-action-icon">↗</span><strong>{t.mandi}</strong></button><button className="quick-action" onClick={() => setScreen("settings")}><span className="quick-action-icon">⋯</span><strong>{t.settings}</strong></button></div>
-          <p className="footer-note">{status.risk_event.disclaimer}</p>
-        </>}
-        {screen === "why" && <ScoreBreakdown event={status.risk_event} title={t.why} />}
-        {screen === "action" && <ActionCardView card={actionCard} />}
-        {screen === "mandi" && <section className="surface panel"><p className="eyebrow">Decision support</p><h2>{t.mandi}</h2><p className="muted">Compare options before deciding. An officer or FPO confirms the next step.</p><div className="stack">{status.mandis.map((mandi) => <div className="check-row" key={mandi.mandi}><div><strong>{mandi.mandi}</strong><div className="muted small">{mandi.distance_km} km · {new Date(mandi.verified_at).toLocaleDateString()}</div></div><div style={{ textAlign: "right" }}><strong>₹{mandi.modal_price.toLocaleString("en-IN")}</strong><div className="small" style={{ color: mandi.change_pct < 0 ? "#b42318" : "#147a61" }}>{mandi.change_pct}% seasonal change</div></div></div>)}</div></section>}
-        {screen === "copilot" && <section className="surface panel copilot-page"><div className="copilot-header"><span className="assistant-mark">✦</span><div><h2 style={{ marginBottom: 2 }}>{t.ask}</h2><span className="small muted">Simple explanations, approved next steps</span></div></div><div className="copilot-scroll">{messages.map((message) => <div className={`chat-bubble ${message.role}`} key={message.id}>{message.text}</div>)}</div><div className="quick-replies"><button className="quick-reply" onClick={() => replyTo("Why is my status red?")}>{t.why}</button><button className="quick-reply" onClick={() => replyTo("What should I do today?")}>{t.action}</button><button className="quick-reply" onClick={() => replyTo("Compare nearby markets")}>{t.mandi}</button></div><div className="chat-composer"><button className="icon-button" aria-label="Voice input" title="Voice input">⌁</button><input aria-label={t.askPlaceholder} value={copilotInput} onChange={(event) => setCopilotInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") replyTo(copilotInput); }} placeholder={t.askPlaceholder} /><Button onClick={() => replyTo(copilotInput)} disabled={!copilotInput.trim()}>{t.send}</Button></div></section>}
-        {screen === "settings" && <section className="surface panel"><p className="eyebrow">Your choices</p><h2>{t.settings}</h2><p className="muted">{t.privacy}</p><ConsentToggle label="Save my support information" description="Needed to show your status again." value={consent.storage} onChange={updateConsent("storage")} /><ConsentToggle label="Allow officer contact" description="Lets an extension officer call or refer your case." value={consent.contact} onChange={updateConsent("contact")} /><ConsentToggle label="Include me in anonymous trends" description="Only group results are used." value={consent.analytics} onChange={updateConsent("analytics")} /><ConsentToggle label="Share a coarse repayment window" description="Timing only; no account or lender data." value={consent.due_window} onChange={updateConsent("due_window")} /><div className="row" style={{ marginTop: 16 }}><Button variant="secondary" onClick={() => { window.localStorage.removeItem("farmer-onboarded"); setOnboarded(false); }}>Review setup</Button><Button variant="ghost" onClick={() => setOnline(navigator.onLine)}>Refresh</Button></div></section>}
-        {screen === "more" && <section className="surface panel stack"><div><p className="eyebrow">More</p><h2>{t.more}</h2></div><Button variant="secondary" onClick={() => setScreen("mandi")}>{t.mandi} <span className="spacer" />→</Button><Button variant="secondary" onClick={() => setScreen("settings")}>{t.settings} <span className="spacer" />→</Button></section>}
-      </div>
-      <nav className="bottom-nav" aria-label="Farmer navigation"><button className={`tab ${screen === "home" ? "active" : ""}`} onClick={() => setScreen("home")}><span className="nav-icon">⌂</span>Home</button><button className={`tab ${screen === "why" || screen === "action" ? "active" : ""}`} onClick={() => setScreen("why")}><span className="nav-icon">◌</span>{t.why}</button><button className={`tab ${screen === "copilot" ? "active" : ""}`} onClick={() => setScreen("copilot")}><span className="nav-icon">✦</span>{t.ask}</button><button className={`tab ${screen === "more" || screen === "mandi" || screen === "settings" ? "active" : ""}`} onClick={() => setScreen("more")}><span className="nav-icon">⋯</span>{t.more}</button></nav>
+    <main className="app-shell farmer-shell shield-farmer-shell"><div className="app-container">
+      {screen === "home" && <ShieldHome event={status.risk_event} updatedLabel={online ? t.updated : t.offline} onOpenWhy={() => setScreen("why")} onOpenAction={() => setScreen("action")} onOpenCopilot={() => setScreen("copilot")} onOpenMandi={() => setScreen("mandi")} />}
+      {screen === "why" && <ShieldStatusScreen event={status.risk_event} onBack={() => setScreen("home")} onOpenAction={() => setScreen("action")} />}
+      {screen === "action" && <ShieldActionScreen card={actionCard} onBack={() => setScreen("why")} onAsk={() => setScreen("copilot")} />}
+      {screen === "mandi" && <ShieldMarketScreen mandis={status.mandis} onBack={() => setScreen("home")} />}
+      {screen === "copilot" && <ShieldCopilotScreen messages={messages} input={copilotInput} placeholder={t.askPlaceholder} sendLabel={t.send} onInput={setCopilotInput} onReply={replyTo} onBack={() => setScreen("home")} />}
+      {screen === "settings" && <ShieldPrivacyScreen consent={consent} privacyText={t.privacy} onUpdate={(key, value) => updateConsent(key)(value)} onReviewSetup={() => { window.localStorage.removeItem("farmer-onboarded"); setOnboarded(false); }} onBack={() => setScreen("more")} />}
+      {screen === "more" && <ShieldMoreScreen locale={locale} localeName={t.name} onLocale={setLocale} onMarkets={() => setScreen("mandi")} onPrivacy={() => setScreen("settings")} onAsk={() => setScreen("copilot")} />}
+      {(screen === "home" || screen === "more") && <ShieldDock screen={screen} labels={{ home: "Home", status: t.why, ask: t.ask, more: t.more }} onNavigate={setScreen} />}
     </div></main>
   );
 }
