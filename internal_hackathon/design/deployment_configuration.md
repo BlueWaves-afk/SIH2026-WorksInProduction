@@ -122,7 +122,9 @@ kill switch return the template response instead.
 ## Release order
 
 1. Apply `services/backend/alembic upgrade head` against a disposable Supabase
-   branch/project and verify PostGIS.
+   branch/project and verify PostGIS. The production Docker command repeats
+   `alembic upgrade head` before Uvicorn starts, so a Render restart cannot serve
+   code ahead of the database schema.
 2. Set backend-only variables on Render; set only the two `VITE_*` variables on
    Vercel. `CORS_ORIGINS` should include the production portal origin
    `https://sih-2026-works-in-production.vercel.app` (the backend also includes

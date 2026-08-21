@@ -126,6 +126,7 @@
 - [x] Added case deduplication, assignment on acknowledgement, SLA breach audit, reopen policy and an outreach cycle endpoint.
 - [x] Added consent-aware band-change/sustained-Red outreach, quiet-hours fallback, daily caps, inbound SMS/missed-call/IVR handling and signed provider webhooks.
 - [x] Added scheduled retention cleanup for old observations and completed outbox messages while retaining audit history.
+- [x] Made both backend container entrypoints apply Alembic migrations before Uvicorn starts, preventing Render from serving models ahead of Supabase.
 - [x] Added mobile-farmer and desktop-officer Playwright journeys and wired them into CI.
 - [x] Upgraded Vite, Vitest and Playwright to audited versions and deduplicated the JavaScript dependency tree.
 

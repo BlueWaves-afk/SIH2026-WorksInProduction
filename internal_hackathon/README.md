@@ -102,8 +102,10 @@ directory to `internal_hackathon`, Dockerfile path to
 `infra/docker/backend.Dockerfile`, and health check path to `/healthz`. Render
 will provide an HTTPS `*.onrender.com` URL after the first successful deploy;
 that is the value for `VITE_API_BASE_URL`. Add backend secrets in Render's
-environment settings, not Vercel. The Docker command honors Render's `PORT`
-variable and falls back to port `8000` locally.
+environment settings, not Vercel. The Docker command applies `alembic upgrade
+head` before serving traffic, then honors Render's `PORT` variable and falls
+back to port `8000` locally. A deployment with a schema migration failure fails
+health checks instead of serving an API whose models are ahead of Supabase.
 
 ## Layout
 

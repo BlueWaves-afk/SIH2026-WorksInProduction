@@ -72,6 +72,16 @@ def _error_code(status_code: int) -> str:
     }.get(status_code, "request_failed")
 
 
+def _add_error_cors(response: JSONResponse, request: Request) -> JSONResponse:
+    """Keep unexpected API errors visible to the deployed browser client."""
+    origin = request.headers.get("origin")
+    if origin and origin in settings.cors_origin_list:
+        response.headers.setdefault("access-control-allow-origin", origin)
+        response.headers.setdefault("access-control-allow-credentials", "true")
+        response.headers.setdefault("vary", "Origin")
+    return response
+
+
 @app.exception_handler(HTTPException)
 async def http_error(request: Request, exc: HTTPException):
     request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
@@ -125,10 +135,10 @@ async def request_context(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         logger.exception("unhandled request failure", extra={"request_id": request_id})
-        response = JSONResponse(
+        response = _add_error_cors(JSONResponse(
             status_code=500,
             content={"code": "internal_error", "message": "Unexpected server error", "request_id": request_id},
-        )
+        ), request)
     logger.info(
         "request complete",
         extra={
