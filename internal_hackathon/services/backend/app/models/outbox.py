@@ -10,7 +10,7 @@ class OutboxMessage(Base):
     idempotency_key = Column(String, unique=True, index=True, nullable=True)
     farmer_token = Column(String, index=True, nullable=True)
     farmer_phone = Column(String, index=True)
-    channel = Column(String)  # 'sms', 'voice', 'whatsapp'
+    channel = Column(String)  # 'whatsapp', 'whatsapp_call', 'push' (legacy sms/voice accepted)
     content = Column(JSON)
     status = Column(String, default='pending')  # 'pending', 'sent', 'failed'
     retry_count = Column(Integer, default=0)

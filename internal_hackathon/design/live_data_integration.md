@@ -42,7 +42,7 @@ The endpoint and keys are server-side settings. They must never be exposed to
 the browser or committed to Git. Until the flag and every selected real
 adapter mode are configured, `/api/v1/ingestion/preview` reports the source as
 unavailable and the existing deterministic replay remains the only scoring
-input. AgriStack profile prefill and Bhashini voice are separate
+input. AgriStack profile prefill and Sarvam speech are separate
 health-checked contracts, not generic FDI signal sources.
 
 ## API hooks

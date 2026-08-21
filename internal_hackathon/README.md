@@ -9,7 +9,8 @@ human agriculture officer who closes the loop.
 ## Two decisions that define this system
 
 1. **Push, not pull.** A farmer will never open our site. The daily cycle reaches *out* —
-   SMS → IVR → WhatsApp, ordered by reach. See [Module 9](design/module_9_outreach_automation.md).
+   WhatsApp message first, then an explicitly approved call provider when opted in. See
+   [Module 9](design/module_9_outreach_automation.md).
 2. **ML perceives, rules decide.** ML where it has ground truth (satellite crop stress, price
    forecasting); a deterministic index for the decision to contact a person.
    Evidence: [research_risk_modelling.md](design/research_risk_modelling.md).
@@ -51,10 +52,13 @@ contracts live in their owning packages. Never create another server or duplicat
 inside an endpoint.
 
 The bounded farmer conversation agent is exposed at `POST /api/v1/copilot/chat`.
-It is template-first by default; Sarvam is enabled only server-side with
+Sarvam is the approved live conversation/STT/TTS provider; Bhashini is no
+longer used by the runtime. Sarvam is enabled only server-side with
 `LLM_PROVIDER=sarvam`, `LLM_EXTERNAL_ALLOWED=true`, and `SARVAM_API_KEY` in an
 ignored backend environment file or deployment secret store. Never put that key
-in a `VITE_*` variable or browser bundle.
+in a `VITE_*` variable or browser bundle. Outbound farmer outreach uses
+WhatsApp by default; WhatsApp calling is an optional provider bridge and must
+not be reported as placed unless an approved Meta/telephony partner confirms it.
 
 ```
 Observation → M3 produces, M4 consumes
@@ -84,6 +88,16 @@ alembic upgrade head
 # Render/container deployment (Docker context is internal_hackathon)
 docker build -f infra/docker/backend.Dockerfile .
 ```
+
+### Getting the backend URL
+
+Create a Render **Web Service** from the GitHub repository. Set the root
+directory to `internal_hackathon`, Dockerfile path to
+`infra/docker/backend.Dockerfile`, and health check path to `/healthz`. Render
+will provide an HTTPS `*.onrender.com` URL after the first successful deploy;
+that is the value for `VITE_API_BASE_URL`. Add backend secrets in Render's
+environment settings, not Vercel. The Docker command honors Render's `PORT`
+variable and falls back to port `8000` locally.
 
 ## Layout
 

@@ -71,3 +71,8 @@ def test_replay_scenarios_are_deterministic(scenario):
             "mandi_price_deviation_pct",
             "due_window",
         }
+
+
+def test_flagship_replay_carries_every_restricted_source_as_a_labeled_fixture():
+    sources = {item.source for item in ReplayDriver().generate("rainfall_shock", 0).observations}
+    assert sources >= {"imd", "agmarknet", "msp", "bhuvan", "soil", "sentinel2", "advisory", "farmer"}

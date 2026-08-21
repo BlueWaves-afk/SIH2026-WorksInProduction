@@ -23,6 +23,9 @@ class SignalRequest(BaseModel):
     district_id: str | None = None
     mandi_id: str | None = None
     commodity: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    bbox: tuple[float, float, float, float] | None = None
     date_range: tuple[date, date]
 
 

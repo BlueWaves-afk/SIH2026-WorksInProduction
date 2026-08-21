@@ -41,7 +41,24 @@ class Settings(BaseSettings):
     observation_retention_days: int = Field(default=90, ge=7, le=3650)
     outbox_retention_days: int = Field(default=30, ge=7, le=3650)
     notify_provider: str = "mock"
+    notification_webhook_secret: str | None = None
     sms_provider_key: str | None = None
+    whatsapp_access_token: str | None = None
+    whatsapp_phone_number_id: str | None = None
+    whatsapp_graph_api_version: str = "v20.0"
+    whatsapp_base_url: str = "https://graph.facebook.com"
+    whatsapp_template_name: str | None = None
+    whatsapp_call_endpoint: str | None = None
+    whatsapp_call_api_key: str | None = None
+    whatsapp_call_provider: str = "partner"
+    sarvam_voice_agent_base_url: str = "https://apps.sarvam.ai"
+    sarvam_voice_agent_api_key: str | None = None
+    sarvam_voice_agent_org_id: str | None = None
+    sarvam_voice_agent_workspace_id: str | None = None
+    sarvam_voice_agent_app_id: str | None = None
+    sarvam_voice_agent_app_version: int = Field(default=1, ge=1)
+    sarvam_voice_agent_connection_id: str | None = None
+    sarvam_voice_agent_phone_number: str | None = None
     bhashini_api_key: str | None = None
     # LLM calls are server-side only.  The safe default keeps local/demo
     # deployments deterministic; enabling a provider is an explicit release
@@ -53,6 +70,11 @@ class Settings(BaseSettings):
     sarvam_api_key: str | None = None
     sarvam_base_url: str = "https://api.sarvam.ai/v1"
     sarvam_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
+    sarvam_stt_endpoint: str = "https://api.sarvam.ai/speech-to-text"
+    sarvam_tts_endpoint: str = "https://api.sarvam.ai/text-to-speech"
+    sarvam_stt_model: str = "saaras:v3"
+    sarvam_tts_model: str = "bulbul:v3"
+    sarvam_tts_voice: str = "shubh"
     imd_api_key: str | None = None
     agmarknet_api_key: str | None = None
     # Live ingestion is opt-in.  The application stays on deterministic
@@ -80,6 +102,9 @@ class Settings(BaseSettings):
     bhuvan_api_key: str | None = None
     msp_api_key: str | None = None
     sentinel2_api_key: str | None = None
+    sentinel2_client_id: str | None = None
+    sentinel2_client_secret: str | None = None
+    sentinel2_token_url: str | None = None
     soil_api_key: str | None = None
     live_signal_sources: str = "imd,agmarknet"
     shadow_ml_enabled: bool = False
@@ -118,6 +143,28 @@ class Settings(BaseSettings):
             missing = [name for name, value in required.items() if not value]
             if missing:
                 raise RuntimeError(f"Missing required production settings: {', '.join(missing)}")
+        if self.llm_provider.lower() == "sarvam" and self.llm_external_allowed and not self.sarvam_api_key:
+            raise RuntimeError("SARVAM_API_KEY is required when live Sarvam is enabled")
+        if self.notify_provider.lower() in {"whatsapp", "meta", "whatsapp_cloud"}:
+            missing_whatsapp = {
+                "WHATSAPP_ACCESS_TOKEN": self.whatsapp_access_token,
+                "WHATSAPP_PHONE_NUMBER_ID": self.whatsapp_phone_number_id,
+            }
+            missing = [name for name, value in missing_whatsapp.items() if not value]
+            if missing:
+                raise RuntimeError(f"Missing WhatsApp provider settings: {', '.join(missing)}")
+            if self.whatsapp_call_provider.lower() == "sarvam":
+                sarvam_call = {
+                    "SARVAM_VOICE_AGENT_API_KEY": self.sarvam_voice_agent_api_key or self.sarvam_api_key,
+                    "SARVAM_VOICE_AGENT_ORG_ID": self.sarvam_voice_agent_org_id,
+                    "SARVAM_VOICE_AGENT_WORKSPACE_ID": self.sarvam_voice_agent_workspace_id,
+                    "SARVAM_VOICE_AGENT_APP_ID": self.sarvam_voice_agent_app_id,
+                    "SARVAM_VOICE_AGENT_CONNECTION_ID": self.sarvam_voice_agent_connection_id,
+                    "SARVAM_VOICE_AGENT_PHONE_NUMBER": self.sarvam_voice_agent_phone_number,
+                }
+                missing_call = [name for name, value in sarvam_call.items() if not value]
+                if missing_call:
+                    raise RuntimeError(f"Missing Sarvam Voice Agents settings: {', '.join(missing_call)}")
 
 
 @lru_cache

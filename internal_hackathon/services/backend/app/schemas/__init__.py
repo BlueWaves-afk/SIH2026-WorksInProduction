@@ -179,15 +179,35 @@ class CopilotConversationResponse(BaseModel):
     disclaimer: str = "This is a support signal, not a credit, loan-default, or insurance score."
 
 
+class CopilotSpeechTranscribeRequest(BaseModel):
+    farmer_token: str = Field(min_length=1, max_length=160)
+    audio_base64: str = Field(min_length=4, max_length=8_000_000)
+    language_code: str | None = Field(default=None, min_length=2, max_length=12)
+
+
+class CopilotSpeechTranscribeResponse(BaseModel):
+    text: str
+    language_code: str | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    provider: str = "sarvam"
+
+
+class CopilotSpeechSynthesizeRequest(BaseModel):
+    farmer_token: str = Field(min_length=1, max_length=160)
+    text: str = Field(min_length=1, max_length=2500)
+    language_code: str = Field(default="en-IN", min_length=2, max_length=12)
+
+
 class NotificationDispatchRequest(BaseModel):
     case_id: int
-    channel: str = Field(default="sms", pattern="^(sms|voice|push)$")
+    channel: str = Field(default="whatsapp", pattern="^(whatsapp|whatsapp_message|whatsapp_call|push|sms|voice)$")
     content: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConsentUpdate(BaseModel):
     storage: bool | None = None
     contact: bool | None = None
+    whatsapp_call: bool | None = None
     analytics: bool | None = None
     due_window: bool | None = None
     version: str = "1"
@@ -231,6 +251,9 @@ __all__ = [
     "ConversationMessage",
     "CopilotConversationRequest",
     "CopilotConversationResponse",
+    "CopilotSpeechSynthesizeRequest",
+    "CopilotSpeechTranscribeRequest",
+    "CopilotSpeechTranscribeResponse",
     "FarmerProfile",
     "FarmerProfileCreate",
     "FarmerProfilePublic",

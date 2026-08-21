@@ -140,8 +140,7 @@ class ConfiguredRealAdapter(MockSignalAdapter):
             "x-api-key": self.api_key,
         }
 
-    @staticmethod
-    def _request_params(req: SignalRequest) -> dict[str, str]:
+    def _request_params(self, req: SignalRequest) -> dict[str, str]:
         params: dict[str, str] = {
             "start_date": req.date_range[0].isoformat(),
             "end_date": req.date_range[1].isoformat(),
@@ -150,6 +149,12 @@ class ConfiguredRealAdapter(MockSignalAdapter):
             value = getattr(req, key, None)
             if value:
                 params[key] = str(value)
+        if req.latitude is not None:
+            params["latitude"] = str(req.latitude)
+        if req.longitude is not None:
+            params["longitude"] = str(req.longitude)
+        if req.bbox is not None:
+            params["bbox"] = ",".join(str(value) for value in req.bbox)
         return params
 
     def _fetch_json(self, req: SignalRequest) -> tuple[Any, datetime]:

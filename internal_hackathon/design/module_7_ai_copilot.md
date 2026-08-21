@@ -1,5 +1,11 @@
 # Module 7 — AI & Agentic Copilot Layer
 
+> **Runtime amendment (August 2026):** Sarvam is the approved runtime provider for bounded farmer
+> conversation (`sarvam-105b-conversations`) and optional speech I/O (`saaras` STT / `bulbul` TTS).
+> The older Bhashini voice path is compatibility-only and is not selected by the backend. Sarvam
+> Voice Agents can be configured for approved outbound telephony; WhatsApp voice is account/enterprise
+> gated, so the notification layer must not claim a call was placed without a provider receipt.
+
 `services/ai-copilot` · Owner concern: Officer copilot (agentic + RAG over scheme docs), farmer voice copilot,
 LLM explainer/translator, guardrails, shadow ML.
 
@@ -16,13 +22,17 @@ LLM explainer/translator, guardrails, shadow ML.
   the score's top-3 drivers (verbatim from M4, never re-derived), cited scheme matches, one suggested next
   action drawn from a **fixed playbook**, and a draft local-language outreach message. The officer edits and
   approves before anything is sent.
-- **Farmer Voice Copilot** — a Bhashini-backed (via M3) voice agent that *narrates* the deterministic score
+- **Farmer Voice Copilot** — a Sarvam-backed (via the backend speech adapter) voice agent that *narrates* the deterministic score
   band, its drivers, and scheme RAG answers in the farmer's language. It never invents a score, diagnosis,
   or dosage.
 - **Bounded farmer conversation** — `POST /api/v1/copilot/chat` accepts a short question and bounded history,
   grounds the answer in the current `RiskEvent`, and uses Sarvam's `sarvam-105b-conversations` model only
   when the backend kill switch and key are enabled. It is not a general-purpose chatbot: the deterministic
   template path remains the safety fallback, and the agent cannot send, score, or change a case.
+- **Sarvam speech bridge** — `POST /api/v1/copilot/speech/transcribe` and
+  `POST /api/v1/copilot/speech/synthesize` expose short, non-persisted voice turns through the server-side
+  Sarvam STT/TTS adapter. Both enforce profile ownership, storage consent, redacted audit metadata, and a
+  provider-failure 503 rather than fabricating audio.
 - **LLM explainer/translator** — a narrow, template-first, agronomy-locked service that turns M4's
   machine-readable drivers into natural dialect sentences, used by both the farmer "why" screen and the
   officer's draft message.
@@ -43,7 +53,7 @@ LLM explainer/translator, guardrails, shadow ML.
 - Scheme document ingestion pipeline + `pgvector` retrieval logic (operates on the `scheme_chunks` table
   that lives in M1's database, per masterspec §5).
 - Driver → natural-language sentence templates (per locale) and LLM polish pass.
-- Bhashini-backed voice narration session handling (delegating actual ASR/TTS/translation calls to M3).
+- Sarvam-backed voice narration session handling (delegating actual ASR/TTS calls to the backend adapter).
 - Shadow ML challenger logging pipeline (feature-flagged, off by default).
 - All guardrail/validation code that gates this module's own outputs.
 
@@ -179,6 +189,8 @@ it is additive and never referenced by M4/M5/M6.
 | `/api/v1/copilot/brief` | `POST { case_id }` | officer role, MFA per M2 RBAC | Generate/refresh a `CopilotBrief` for a case. |
 | `/api/v1/copilot/explain` | `GET ?event_id=&locale=` | any authenticated app (farmer app, officer dashboard) | Driver → natural-language sentence(s) for the "why" screen (no draft message, no scheme RAG). |
 | `/api/v1/copilot/chat` | `POST { farmer_token, message, locale, history[] }` | farmer ownership or officer role, storage consent | Bounded question answering grounded in the active deterministic event; no outbound action. |
+| `/api/v1/copilot/speech/transcribe` | `POST { farmer_token, audio_base64, language_code? }` | farmer ownership or officer role, storage consent | Short Sarvam STT turn; audio is not persisted. |
+| `/api/v1/copilot/speech/synthesize` | `POST { farmer_token, text, language_code }` | farmer ownership or officer role, storage consent | Sarvam TTS bytes for a grounded response; no provider key in the client. |
 | `/api/v1/copilot/voice-session` | `POST { farmer_token, locale }` *(stretch)* | farmer session token (M2) | Opens a narration session; media I/O handled by M3, this module only supplies script segments. |
 
 All inbound calls require a valid `AuthContext`; `/copilot/brief` additionally checks `ConsentContext.contact`

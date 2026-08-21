@@ -1,17 +1,24 @@
 # Module 6 — Notification & Multi-Channel Delivery
 
+> **Runtime amendment (August 2026):** Farmer outbound delivery is now
+> WhatsApp-first. `whatsapp` sends a Cloud API message/template; optional
+> `whatsapp_call` routes through an explicitly configured, approved calling
+> partner or Sarvam Voice Agents outbound telephony. The outbox never reports a
+> call as placed when that provider is not configured. WhatsApp voice is
+> account/enterprise gated. Legacy SMS/voice values remain accepted only for migration.
+
 Spec owner: Agent — Notification/Delivery · Package: `services/notification`
 Conforms to the template in `module_0_architecture_overview.md §5`. Aligns with `masterspecv1.md` (esp. §3 hysteresis/alert-fatigue, §6 adapters, §7 voice, §17 risks).
 
 > **Amendment (outreach strategy).** M6 executes; **[Module 9](./module_9_outreach_automation.md)
 > decides** *whether, when and by which channel*. Two rules from M9 bind this module:
 >
-> 1. **Channel priority is ordered by reach, not richness:**
->    **SMS (1) → IVR/voice (2) → WhatsApp (3) → PWA push (4)**. SMS and IVR reach *any* phone with
->    no internet; IVR needs no literacy at all. **Email is not a farmer channel** — officers only.
->    WhatsApp is a new provider to add alongside the existing four.
-> 2. **Red band dispatches SMS *and* IVR in parallel** (redundancy where it matters); lower bands
->    use a single channel with fallback-on-failure to the next rung.
+> 1. **Channel priority is now WhatsApp-first:** a `whatsapp` message is the default farmer
+>    path; an opted-in `whatsapp_call` is requested only when an approved call provider is configured;
+>    PWA push remains an additive fallback. Legacy SMS/IVR values are accepted only for migration.
+> 2. **Red band dispatches the selected WhatsApp path once per idempotency window** and records the
+>    provider receipt. A call that cannot be confirmed remains queued/failed; it is never reported as
+>    placed. Email is not a farmer channel — officers only.
 >
 > M6 also serves M9's inbound paths by exposing delivery status for missed-call callbacks and
 > IVR keypress sessions.

@@ -7,14 +7,23 @@ only the small surface needed by the bounded farmer-support agent.
 
 from __future__ import annotations
 
+import base64
+import binascii
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
 
 
 class SarvamProviderError(RuntimeError):
     """A provider failure that is safe to surface as a deterministic fallback."""
+
+
+class SarvamSpeechProviderError(RuntimeError):
+    """A speech-provider failure safe to surface as an offline fallback."""
 
 
 @dataclass(frozen=True)
@@ -22,6 +31,136 @@ class SarvamChatResult:
     content: str
     model: str
     provider: str = "sarvam"
+
+
+@dataclass(frozen=True)
+class SarvamTranscription:
+    text: str
+    language: str | None = None
+    confidence: float | None = None
+
+
+class SarvamSpeechProvider:
+    """Server-side Sarvam STT/TTS adapter used instead of Bhashini.
+
+    The adapter deliberately exposes bytes/text only.  It does not persist
+    audio, log the API key, or make any scoring or outreach decision.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None,
+        stt_endpoint: str = "https://api.sarvam.ai/speech-to-text",
+        tts_endpoint: str = "https://api.sarvam.ai/text-to-speech",
+        stt_model: str = "saaras:v3",
+        tts_model: str = "bulbul:v3",
+        voice: str = "shubh",
+        timeout_seconds: float = 20.0,
+        client: httpx.Client | None = None,
+    ) -> None:
+        self.api_key = api_key.strip() if api_key else None
+        self.stt_endpoint = stt_endpoint.rstrip("/")
+        self.tts_endpoint = tts_endpoint.rstrip("/")
+        self.stt_model = stt_model
+        self.tts_model = tts_model
+        self.voice = voice
+        self.timeout_seconds = timeout_seconds
+        self._client = client
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.api_key)
+
+    def _headers(self) -> dict[str, str]:
+        if not self.configured:
+            raise SarvamSpeechProviderError("Sarvam speech provider is not configured")
+        return {"api-subscription-key": self.api_key or "", "accept": "application/json"}
+
+    def transcribe(self, audio: bytes, *, language_code: str | None = None) -> SarvamTranscription:
+        if not audio:
+            raise SarvamSpeechProviderError("audio payload is empty")
+        client = self._client or httpx.Client(timeout=self.timeout_seconds)
+        close_client = self._client is None
+        try:
+            data = {"model": self.stt_model, "mode": "transcribe"}
+            if language_code:
+                data["language_code"] = language_code
+            response = client.post(
+                self.stt_endpoint,
+                headers=self._headers(),
+                data=data,
+                files={"file": ("farmer-audio.wav", audio, "audio/wav")},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise SarvamSpeechProviderError(f"Sarvam speech request failed with HTTP {exc.response.status_code}") from exc
+        except (httpx.HTTPError, ValueError) as exc:
+            raise SarvamSpeechProviderError("Sarvam speech request failed") from exc
+        finally:
+            if close_client:
+                client.close()
+        if not isinstance(payload, dict):
+            raise SarvamSpeechProviderError("Sarvam speech response was invalid")
+        text = str(payload.get("transcript") or payload.get("text") or "").strip()
+        if not text:
+            raise SarvamSpeechProviderError("Sarvam speech response contained no transcript")
+        confidence = payload.get("confidence")
+        try:
+            confidence_value = float(confidence) if confidence is not None else None
+        except (TypeError, ValueError):
+            confidence_value = None
+        return SarvamTranscription(text=text, language=payload.get("language_code"), confidence=confidence_value)
+
+    def synthesize(self, text: str, *, language_code: str = "en-IN") -> bytes:
+        if not text.strip():
+            raise SarvamSpeechProviderError("TTS text is empty")
+        client = self._client or httpx.Client(timeout=self.timeout_seconds)
+        close_client = self._client is None
+        try:
+            response = client.post(
+                self.tts_endpoint,
+                headers={**self._headers(), "content-type": "application/json"},
+                json={
+                    "text": text[:2500],
+                    "language_code": language_code,
+                    "speaker": self.voice,
+                    "model": self.tts_model,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise SarvamSpeechProviderError(f"Sarvam TTS request failed with HTTP {exc.response.status_code}") from exc
+        except (httpx.HTTPError, ValueError) as exc:
+            raise SarvamSpeechProviderError("Sarvam TTS request failed") from exc
+        finally:
+            if close_client:
+                client.close()
+        if not isinstance(payload, dict):
+            raise SarvamSpeechProviderError("Sarvam TTS response was invalid")
+        audio_b64 = payload.get("audios", [None])[0] if isinstance(payload.get("audios"), list) else None
+        if not isinstance(audio_b64, str) or not audio_b64:
+            raise SarvamSpeechProviderError("Sarvam TTS response contained no audio")
+        try:
+            return base64.b64decode(audio_b64, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise SarvamSpeechProviderError("Sarvam TTS response contained invalid audio") from exc
+
+
+def build_sarvam_speech_provider(settings: Settings) -> SarvamSpeechProvider:
+    """Build the speech adapter from backend settings without exposing secrets."""
+
+    return SarvamSpeechProvider(
+        api_key=settings.sarvam_api_key,
+        stt_endpoint=settings.sarvam_stt_endpoint,
+        tts_endpoint=settings.sarvam_tts_endpoint,
+        stt_model=settings.sarvam_stt_model,
+        tts_model=settings.sarvam_tts_model,
+        voice=settings.sarvam_tts_voice,
+        timeout_seconds=settings.sarvam_timeout_seconds,
+    )
 
 
 class SarvamChatProvider:
@@ -75,6 +214,10 @@ class SarvamChatProvider:
             "temperature": temperature,
             "top_p": top_p,
             "max_tokens": max_tokens,
+            # Farmer replies are short and grounded; disabling hidden
+            # reasoning prevents a small output budget being consumed before
+            # any user-visible content is emitted.
+            "reasoning_effort": None,
         }
         headers = {
             "api-subscription-key": self.api_key,

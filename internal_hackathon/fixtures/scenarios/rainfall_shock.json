@@ -8,6 +8,9 @@
     {"source": "farmer_opt_in", "metric": "due_window", "value": {"days_to_due": 5, "amount_band": "medium"}, "unit": "days", "ttl_days": 7},
     {"source": "sentinel2", "metric": "satellite_crop_stress", "value": 0, "unit": "percent", "ttl_days": 10},
     {"source": "advisory", "metric": "pest_pressure", "value": 0, "unit": "ratio", "ttl_days": 2},
-    {"source": "farmer", "metric": "acute_farmer_report", "value": "none", "unit": "", "ttl_days": 2}
+    {"source": "farmer", "metric": "acute_farmer_report", "value": "none", "unit": "", "ttl_days": 2},
+    {"source": "msp", "metric": "msp_price", "value": 7121, "unit": "inr_per_quintal", "ttl_days": 365},
+    {"source": "bhuvan", "metric": "village_coordinates", "value": {"lat": 20.0, "lon": 73.8}, "unit": "geojson", "ttl_days": 30},
+    {"source": "soil", "metric": "soil_water_holding_capacity", "value": "medium", "unit": "class", "ttl_days": 365}
   ]
 }

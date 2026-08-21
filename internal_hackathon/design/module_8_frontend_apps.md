@@ -1,5 +1,9 @@
 # Module 8 — Frontend Apps
 
+> **Runtime amendment (August 2026):** The farmer voice surface uses Sarvam through server-side
+> endpoints; API keys never reach the PWA. Bhashini remains a historical compatibility reference
+> only. The client still treats voice as additive and retains a tap/text/offline fallback.
+
 Spec for `apps/farmer-pwa`, `apps/officer-dashboard`, `packages/ui-kit` in the platform's monorepo.
 Read `masterspecv1.md` and `module_0_architecture_overview.md` first — this spec conforms to both and
 does not redefine any contract, scoring rule, or workflow owned elsewhere.

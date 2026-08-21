@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from .._common import ConfiguredRealAdapter, _rows_from_payload, as_number, first_value, parse_datetime
@@ -25,6 +25,25 @@ class AgmarknetRealAdapter(ConfiguredRealAdapter):
     ):
         super().__init__("agmarknet", endpoint, api_key=api_key, timeout_seconds=timeout_seconds, client=client)
 
+    def _request_params(self, req: SignalRequest) -> dict[str, str]:
+        """Add the official OGD query contract when pointed at data.gov.in.
+
+        The OGD gateway documents ``api-key``, ``format=json`` and ``limit``
+        as query parameters.  Department-owned proxies continue to use the
+        generic header-based contract.
+        """
+
+        params = super()._request_params(req)
+        if self.endpoint and "data.gov.in" in self.endpoint:
+            params.update({"format": "json", "limit": "1000"})
+            if self.api_key:
+                params["api-key"] = self.api_key
+            if req.commodity:
+                params["filters[commodity]"] = req.commodity
+            if req.mandi_id:
+                params["filters[market]"] = req.mandi_id
+        return params
+
     def _parse_payload(self, payload: Any, fetched_at: datetime, req: SignalRequest) -> list[ObservationPayload]:
         result: list[ObservationPayload] = []
         for row in _rows_from_payload(payload):
@@ -48,6 +67,7 @@ class AgmarknetRealAdapter(ConfiguredRealAdapter):
                         metric="mandi_modal_price",
                         value=modal,
                         unit="INR/quintal",
+                        ttl=timedelta(days=3),
                     )
                 )
 
@@ -69,6 +89,7 @@ class AgmarknetRealAdapter(ConfiguredRealAdapter):
                     metric="mandi_price_deviation_pct",
                     value={"deviation_pct": deviation, "below_msp": below_msp},
                     unit="percent",
+                    ttl=timedelta(days=3),
                 )
             )
         return result

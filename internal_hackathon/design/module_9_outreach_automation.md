@@ -1,5 +1,11 @@
 # Module 9 — Outreach Automation & Channel Strategy
 
+> **Runtime amendment (August 2026):** WhatsApp is the default farmer message
+> channel. Red cases may request `whatsapp_call` only when the farmer has
+> consented and an approved calling partner is configured; otherwise the
+> decision remains a WhatsApp message. Sarvam provides the conversation and
+> speech layer; Bhashini is not used by the runtime.
+
 > **Founding premise:** a farmer will never open our site. If the system requires them to check
 > something, it has already failed. The farmer does nothing; **the phone rings.**
 
@@ -14,8 +20,8 @@ outreach land on the phones farmers actually carry.
 
 - Own the **daily cycle**: refresh signals → rescore cohort → diff bands → decide who to contact.
 - Own the **outreach decision policy**: trigger rules, quiet hours, daily caps, escalation ladder.
-- Own the **channel strategy & fallback ladder** (SMS → IVR → WhatsApp → push).
-- Own the **inbound return paths** that need no app: missed call, IVR keypress, SMS reply.
+- Own the **channel strategy & fallback ladder** (WhatsApp message → approved call → push).
+- Own the **inbound return paths** that need no app: WhatsApp reply, missed call, and provider callback.
 - Hand execution to M6 (delivery) and M5 (case creation); this module decides *whether, when and
   by which channel* — never *how to send*.
 

@@ -43,6 +43,25 @@ export async function verifyPhoneOtp(phone: string, token: string) {
   return result.data.session;
 }
 
+/** Email is a demo-friendly fallback for farmers when an SMS provider is not configured. */
+export async function signInWithEmail(email: string, password: string) {
+  if (!supabase) throw new Error("Supabase Auth is not configured");
+  const result = await supabase.auth.signInWithPassword({ email, password });
+  if (result.error) throw result.error;
+  return result.data.session;
+}
+
+export async function signUpWithEmail(email: string, password: string) {
+  if (!supabase) throw new Error("Supabase Auth is not configured");
+  const result = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { role: "farmer" } },
+  });
+  if (result.error) throw result.error;
+  return result.data;
+}
+
 export async function signOut() {
   if (supabase) await supabase.auth.signOut();
   window.localStorage.removeItem("kisansetu.access_token");

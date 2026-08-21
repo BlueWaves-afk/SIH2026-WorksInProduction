@@ -24,8 +24,11 @@ def _select_channel(band: str, flags: dict) -> str | None:
     if not flags.get("contact_me", flags.get("contact", False)):
         return None
     if band == "red":
-        return "voice" if flags.get("voice", True) else "sms"
-    return "sms"
+        # WhatsApp messaging is the default farmer channel.  A live call is
+        # requested only when explicitly enabled and is handled by an
+        # approved WhatsApp/telephony partner, never assumed to exist.
+        return "whatsapp_call" if flags.get("whatsapp_call", False) else "whatsapp"
+    return "whatsapp"
 
 
 def _should_contact(previous: str | None, current: str, red_count: int) -> bool:
@@ -84,8 +87,8 @@ def run_outreach_cycle(db: Session, *, now: datetime | None = None, actor: AuthC
             skipped += 1
             decisions.append({"farmer_token": profile.farmer_token, "status": "blocked", "reason": "contact_consent"})
             continue
-        if _quiet(now) and channel == "voice":
-            channel = "sms"  # quiet-hours ladder; no voice call is emitted
+        if _quiet(now) and channel == "whatsapp_call":
+            channel = "whatsapp"  # quiet-hours ladder; message is queued instead
         day_start = datetime.combine(now.date(), time.min)
         sent_today = db.query(OutboxMessage).filter(OutboxMessage.farmer_token == profile.farmer_token, OutboxMessage.created_at >= day_start).count()
         if sent_today >= settings.outreach_daily_cap:
@@ -111,7 +114,7 @@ def run_outreach_cycle(db: Session, *, now: datetime | None = None, actor: AuthC
                 "reason": reason,
             },
             status="pending",
-            consent_required="contact",
+            consent_required="whatsapp_call" if channel == "whatsapp_call" else "contact",
         )
         db.add(message)
         record_audit(db, actor=system_actor, action="outreach.decision", target_id=profile.farmer_token, details={"event_id": current.event_id, "channel": channel, "reason": reason})

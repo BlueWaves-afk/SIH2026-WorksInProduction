@@ -67,6 +67,13 @@ def test_05_price_no_deviation_scores_zero():
     assert result.points == 0
 
 
+def test_05b_price_below_msp_flag_without_seasonal_baseline_is_safe():
+    result = score_price_stress([obs("mandi_below_msp", True, source="msp")], "cotton", NOW)
+    assert result.points == 4
+    assert result.source == "msp"
+    assert "below MSP" in result.driver_text
+
+
 # ------------------------------------------------------------ 6-7 repayment --
 
 def test_06_repayment_not_opted_in_is_inapplicable():

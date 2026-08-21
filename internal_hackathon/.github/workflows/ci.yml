@@ -33,5 +33,6 @@ jobs:
         with: { node-version: "22" }
       - run: npm ci --prefix internal_hackathon || npm install --prefix internal_hackathon
       - run: npm run build --prefix internal_hackathon
+      - run: npm run test --prefix internal_hackathon
       - run: npx --prefix internal_hackathon playwright install --with-deps chromium
       - run: npm run test:e2e --prefix internal_hackathon

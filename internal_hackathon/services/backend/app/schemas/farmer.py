@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ConsentFlags(BaseModel):
     store_data: bool = False
     contact_me: bool = False
+    whatsapp_call: bool = False
     use_analytics: bool = False
     due_window: bool = False
 

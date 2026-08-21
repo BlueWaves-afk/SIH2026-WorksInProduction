@@ -1,7 +1,15 @@
 # Module 3 — Ingestion & Government Adapters
 
-`libs/adapters` · Owner concern: IMD, Agmarknet/eNAM, AgriStack (via API Setu), Bhashini, Bhuvan/OSM
-adapters; the common adapter interface; mock/replay fixtures; data-quality + TTL normalisation.
+> **Runtime amendment (August 2026):** Bhuvan, MSP, Sentinel-2/Copernicus,
+> and Soil Health Card real adapters now parse supported JSON/GeoJSON/native
+> field shapes. Sarvam owns farmer conversation and optional speech I/O; the
+> older Bhashini voice adapter remains only as a compatibility package and is
+> not selected by the runtime. Sentinel-2 uses OAuth client credentials when
+> pointed directly at Copernicus; a department proxy may use a bearer key.
+
+`libs/adapters` · Owner concern: IMD, Agmarknet/eNAM, AgriStack (via API Setu), Bhuvan/OSM,
+Sentinel-2, MSP, and Soil Health Card adapters; the common adapter interface; mock/replay fixtures;
+data-quality + TTL normalisation. Sarvam speech is a server-side integration, not a scoring source.
 
 > Read `masterspecv1.md` and `module_0_architecture_overview.md` first. This spec follows the
 > module_0 §5 template and must not contradict either document or redesign a sibling module.
@@ -18,7 +26,8 @@ adapters; the common adapter interface; mock/replay fixtures; data-quality + TTL
 > | **Soil / SoilHealthCard** | Soil water-holding capacity per village | S12 vulnerability | Static per village |
 >
 > The AgriStack adapter also gains a **scheme-enrolment** field (feeds S6). Sentinel-2 has its own
-> TTL (10 days, 5-day revisit) and must degrade to `quality=stale` like every other source.
+> TTL (7 days in the runtime contract, with provider revisit/cloud quality retained) and must
+> degrade to `quality=stale` like every other source.
 > S3 is the single biggest accuracy upgrade in v2 — it observes the crop directly rather than
 > inferring stress from rainfall.
 

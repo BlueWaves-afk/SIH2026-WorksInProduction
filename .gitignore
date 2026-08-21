@@ -225,3 +225,5 @@ __marimo__/
 *.pem
 *.key
 *.p12
+.vercel
+.env*

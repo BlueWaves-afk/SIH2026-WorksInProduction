@@ -38,9 +38,25 @@ def build_registry(environ: dict[str, str] | None = None) -> AdapterRegistry:
                 except ValueError:
                     timeout = 10.0
                 adapter = real_factory(endpoint=endpoint, api_key=api_key, timeout_seconds=timeout)
-            elif source in {"bhuvan", "msp", "sentinel2", "soil"}:
+            elif source in {"agristack", "bhuvan", "msp", "sentinel2", "soil"}:
                 api_key = env.get(f"{source.upper()}_API_KEY")
-                adapter = real_factory(endpoint=endpoint, api_key=api_key)
+                try:
+                    timeout = float(env.get("LIVE_ADAPTER_TIMEOUT_SECONDS", "10"))
+                except ValueError:
+                    timeout = 10.0
+                if source == "agristack":
+                    adapter = real_factory(endpoint=endpoint, api_key=api_key, timeout_seconds=timeout)
+                elif source == "sentinel2":
+                    adapter = real_factory(
+                        endpoint=endpoint,
+                        api_key=api_key,
+                        client_id=env.get("SENTINEL2_CLIENT_ID"),
+                        client_secret=env.get("SENTINEL2_CLIENT_SECRET"),
+                        token_url=env.get("SENTINEL2_TOKEN_URL"),
+                        timeout_seconds=timeout,
+                    )
+                else:
+                    adapter = real_factory(endpoint=endpoint, api_key=api_key, timeout_seconds=timeout)
             else:
                 adapter = real_factory()
         else:

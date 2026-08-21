@@ -64,6 +64,9 @@ def _registry():
         "BHUVAN_API_KEY": settings.bhuvan_api_key or "",
         "MSP_API_KEY": settings.msp_api_key or "",
         "SENTINEL2_API_KEY": settings.sentinel2_api_key or "",
+        "SENTINEL2_CLIENT_ID": settings.sentinel2_client_id or "",
+        "SENTINEL2_CLIENT_SECRET": settings.sentinel2_client_secret or "",
+        "SENTINEL2_TOKEN_URL": settings.sentinel2_token_url or "",
         "SOIL_API_KEY": settings.soil_api_key or "",
         "LIVE_ADAPTER_TIMEOUT_SECONDS": str(settings.live_adapter_timeout_seconds),
     }
@@ -171,7 +174,42 @@ def fetch_live(
                     "health": adapter.health().model_dump(mode="json"),
                 }
             )
+    observations = _attach_msp_flags(observations)
     return LiveFetchResult(observations=observations, sources=source_rows, errors=errors)
+
+
+def _attach_msp_flags(observations: list[ObservationPayload]) -> list[ObservationPayload]:
+    """Derive a below-MSP flag only when both live prices are present.
+
+    MSP is a reference table, not a substitute for a market baseline.  This
+    helper therefore adds only the boolean below-MSP signal and never invents
+    a seasonal price deviation.
+    """
+
+    modal = next((row for row in reversed(observations) if row.metric == "mandi_modal_price"), None)
+    msp = next((row for row in reversed(observations) if row.metric == "msp_price"), None)
+    if modal is None or msp is None:
+        return observations
+    try:
+        modal_value = float(modal.value)
+        msp_value = float(msp.value.get("price") if isinstance(msp.value, dict) else msp.value)
+    except (TypeError, ValueError):
+        return observations
+    if any(row.metric == "mandi_below_msp" for row in observations):
+        return observations
+    return [
+        *observations,
+        ObservationPayload(
+            source="msp",
+            observed_at=max(modal.observed_at, msp.observed_at),
+            village_id=modal.village_id or msp.village_id,
+            metric="mandi_below_msp",
+            value=modal_value < msp_value,
+            unit="boolean",
+            quality="good" if modal.quality == "good" and msp.quality == "good" else "degraded",
+            ttl=min(modal.ttl, msp.ttl),
+        ),
+    ]
 
 
 def sync_profile_observations(
@@ -234,6 +272,13 @@ def sync_profile_observations(
         )
         db.add(row)
         persisted.append(row)
+        if payload.metric == "soil_retention":
+            value = payload.value.get("class") if isinstance(payload.value, dict) else payload.value
+            normalized = str(value or "").strip().lower()
+            if normalized in {"poor", "medium", "good"} and payload.quality in {"good", "degraded"}:
+                # Keep the profile field as the scorer's stable context while
+                # retaining the raw soil observation for provenance and audit.
+                profile.soil_retention = normalized
     db.flush()
     return persisted, result
 

@@ -43,7 +43,7 @@ def update_consent(
     authorize_farmer_profile(actor, profile)
     flags = dict(profile.consent_flags or {})
     requested = payload.model_dump(exclude_none=True, exclude={"version"})
-    aliases = {"storage": "store_data", "contact": "contact_me", "analytics": "use_analytics", "due_window": "due_window"}
+    aliases = {"storage": "store_data", "contact": "contact_me", "whatsapp_call": "whatsapp_call", "analytics": "use_analytics", "due_window": "due_window"}
     changed = {aliases[key]: value for key, value in requested.items()}
     for key, value in changed.items():
         flags[key] = value

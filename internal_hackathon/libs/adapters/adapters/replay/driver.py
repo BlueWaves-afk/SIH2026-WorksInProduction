@@ -61,6 +61,20 @@ class ReplayDriver:
             "due_window": 2,
             "stale_data": -25,
         }[scenario_id]
+        satellite_stress = {
+            "normal": 0,
+            "rainfall_shock": 12,
+            "price_crash": 8,
+            "due_window": 0,
+            "stale_data": 12,
+        }[scenario_id]
+        pest_pressure = {
+            "normal": 0,
+            "rainfall_shock": 0,
+            "price_crash": 0,
+            "due_window": 0,
+            "stale_data": 0,
+        }[scenario_id]
         due = scenario_id in {"rainfall_shock", "due_window", "stale_data"}
         due_days = 5 if scenario_id == "rainfall_shock" else 14
         observations = [
@@ -81,6 +95,36 @@ class ReplayDriver:
                 value={"deviation_pct": price, "below_msp": price < -10},
                 unit="percent",
                 ttl=timedelta(days=3),
+            ),
+            # MSP, soil and Bhuvan are intentionally replayed as ordinary
+            # observations so the demo exercises every restricted provider
+            # without depending on credentials or network availability.
+            ObservationPayload(
+                source="msp",
+                observed_at=observed_at,
+                village_id="demo-village",
+                metric="msp_price",
+                value=7121,
+                unit="inr_per_quintal",
+                ttl=timedelta(days=365),
+            ),
+            ObservationPayload(
+                source="bhuvan",
+                observed_at=observed_at,
+                village_id="demo-village",
+                metric="village_coordinates",
+                value={"lat": 20.0, "lon": 73.8},
+                unit="geojson",
+                ttl=timedelta(days=30),
+            ),
+            ObservationPayload(
+                source="soil",
+                observed_at=observed_at,
+                village_id="demo-village",
+                metric="soil_water_holding_capacity",
+                value="medium",
+                unit="class",
+                ttl=timedelta(days=365),
             ),
         ]
         bundle_due = DueWindow(days_to_due=due_days) if due else None
@@ -103,7 +147,7 @@ class ReplayDriver:
                     observed_at=observed_at,
                     village_id="demo-village",
                     metric="satellite_crop_stress",
-                    value=0,
+                    value=satellite_stress,
                     unit="percent",
                     ttl=timedelta(days=10),
                 ),
@@ -112,7 +156,7 @@ class ReplayDriver:
                     observed_at=observed_at,
                     village_id="demo-village",
                     metric="pest_pressure",
-                    value=0,
+                    value=pest_pressure,
                     unit="ratio",
                     ttl=timedelta(days=2),
                 ),

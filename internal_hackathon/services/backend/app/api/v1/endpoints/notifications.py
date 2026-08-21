@@ -39,6 +39,8 @@ def dispatch_notification(
     flags = profile.consent_flags or {}
     if not bool(flags.get("contact_me", flags.get("contact", False))) or not bool(flags.get("store_data", flags.get("storage", False))):
         raise HTTPException(status_code=403, detail="Contact consent is required")
+    if payload.channel == "whatsapp_call" and not bool(flags.get("whatsapp_call", False)):
+        raise HTTPException(status_code=403, detail="WhatsApp call consent is required")
     idem = f"case:{case.id}:manual:{payload.channel}"
     existing = db.query(OutboxMessage).filter(OutboxMessage.idempotency_key == idem).first()
     if existing:
@@ -64,7 +66,7 @@ def dispatch_notification(
         channel=payload.channel,
         content=payload.content,
         status="pending",
-        consent_required="contact",
+        consent_required="whatsapp_call" if payload.channel == "whatsapp_call" else "contact",
     )
     db.add(message)
     record_audit(db, actor=actor, action="notification.enqueue", target_id=str(case.id), details={"channel": payload.channel})
@@ -89,8 +91,9 @@ def provider_webhook(
 ):
     raw_message = str(payload.get("message_id", ""))
     supplied = (provider_signature or "").removeprefix("sha256=")
-    if settings.sms_provider_key:
-        expected = hmac.new(settings.sms_provider_key.encode(), raw_message.encode(), hashlib.sha256).hexdigest()
+    webhook_secret = settings.notification_webhook_secret or settings.sms_provider_key
+    if webhook_secret:
+        expected = hmac.new(webhook_secret.encode(), raw_message.encode(), hashlib.sha256).hexdigest()
         if not supplied or not hmac.compare_digest(supplied, expected):
             raise HTTPException(status_code=401, detail="Invalid provider signature")
     elif settings.env.lower() not in {"local", "test"}:
@@ -117,12 +120,13 @@ def inbound_webhook(
     provider_signature: str | None = Header(default=None, alias="X-Provider-Signature"),
     db: Session = Depends(get_db),
 ):
-    """Handle bounded SMS/missed-call/IVR callbacks without exposing phone numbers."""
+    """Handle bounded WhatsApp/missed-call/provider callbacks without exposing phone numbers."""
 
     raw = f"{payload.get('event_type', '')}:{payload.get('farmer_token', '')}:{payload.get('message_id', '')}"
     supplied = (provider_signature or "").removeprefix("sha256=")
-    if settings.sms_provider_key:
-        expected = hmac.new(settings.sms_provider_key.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    webhook_secret = settings.notification_webhook_secret or settings.sms_provider_key
+    if webhook_secret:
+        expected = hmac.new(webhook_secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
         if not supplied or not hmac.compare_digest(supplied, expected):
             raise HTTPException(status_code=401, detail="Invalid provider signature")
     elif settings.env.lower() not in {"local", "test"}:
@@ -131,12 +135,12 @@ def inbound_webhook(
     profile = db.query(FarmerProfile).filter(FarmerProfile.farmer_token == farmer_token).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Farmer profile not found")
-    event_type = str(payload.get("event_type", "sms")).lower()
-    inbound_id = str(payload.get("message_id") or "")
+    event_type = str(payload.get("event_type", "whatsapp")).lower()
+    inbound_id = str(payload.get("message_id") or payload.get("wamid") or "")
     if inbound_id and db.query(Observation).filter(Observation.source == "outreach_inbound", Observation.metric == "inbound_event_id", Observation.value == inbound_id).first():
         return {"status": "duplicate", "farmer_token": farmer_token, "event_type": event_type}
     flags = dict(profile.consent_flags or {})
-    if event_type == "sms" and str(payload.get("text", "")).strip().upper() in {"STOP", "UNSUBSCRIBE"}:
+    if event_type in {"sms", "whatsapp"} and str(payload.get("text", "")).strip().upper() in {"STOP", "UNSUBSCRIBE"}:
         flags["contact_me"] = False
         profile.consent_flags = flags
         db.add(ConsentLedger(farmer_token=farmer_token, action="WITHDRAW", purpose="contact_me", proof={"source": "provider_webhook"}))
@@ -147,7 +151,7 @@ def inbound_webhook(
         return {"status": "contact_withdrawn", "farmer_token": farmer_token}
     if not bool(flags.get("store_data", flags.get("storage", False))):
         raise HTTPException(status_code=403, detail="Storage consent is required for inbound records")
-    if event_type in {"sms", "ivr"}:
+    if event_type in {"sms", "whatsapp", "ivr"}:
         text_value = str(payload.get("text") or payload.get("keypress") or "REQUEST_HELP")[:280]
         db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="acute_farmer_report", value=text_value, unit="", quality="good", ttl=172800))
         if inbound_id:
@@ -156,10 +160,11 @@ def inbound_webhook(
         if bool(flags.get("contact_me", flags.get("contact", False))):
             callback_idem = f"callback:{farmer_token}:{payload.get('message_id', 'unknown')}"
             if not db.query(OutboxMessage).filter(OutboxMessage.idempotency_key == callback_idem).first():
-                db.add(OutboxMessage(message_id=str(uuid4()), idempotency_key=callback_idem, farmer_token=farmer_token, farmer_phone=profile.phone_enc, channel="voice", content={"type": "callback_request", "source": "missed_call"}, status="pending", consent_required="contact"))
+                callback_channel = "whatsapp_call" if bool(flags.get("whatsapp_call", False)) else "whatsapp"
+                db.add(OutboxMessage(message_id=str(uuid4()), idempotency_key=callback_idem, farmer_token=farmer_token, farmer_phone=profile.phone_enc, channel=callback_channel, content={"type": "callback_request", "source": "missed_call"}, status="pending", consent_required="whatsapp_call" if callback_channel == "whatsapp_call" else "contact"))
             if inbound_id:
                 db.add(Observation(farmer_token=farmer_token, source="outreach_inbound", observed_at=datetime.utcnow(), village_id=profile.village_id, metric="inbound_event_id", value=inbound_id, unit="", quality="good", ttl=2592000))
     else:
-        raise HTTPException(status_code=422, detail="event_type must be sms, missed_call, or ivr")
+        raise HTTPException(status_code=422, detail="event_type must be whatsapp, sms, missed_call, or ivr")
     db.commit()
     return {"status": "accepted", "farmer_token": farmer_token, "event_type": event_type}

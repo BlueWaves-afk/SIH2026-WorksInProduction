@@ -1,5 +1,11 @@
 # KisanSetu — Design Specification (v1)
 
+> **Runtime amendment (August 2026):** Sarvam is the server-side conversation
+> and optional speech provider. Farmer outreach is WhatsApp-first; an optional
+> call uses an approved partner or Sarvam Voice Agents telephony deployment and
+> is never reported as placed without a provider receipt. WhatsApp voice remains
+> account/enterprise gated. The deterministic FDI score remains authoritative.
+
 **An explainable farmer-support radar — not a chatbot.**
 It detects when a farmer may need help early, explains *why* in their own language, sends a safe advisory, and routes the case to a human agriculture officer who closes the loop.
 

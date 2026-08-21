@@ -9,7 +9,7 @@ from app.models.history import DeliveryAttempt
 from app.models.outbox import OutboxMessage
 from app.models.farmer import FarmerProfile
 from app.models.risk import RiskEvent
-from app.adapters.notification import MockNotificationAdapter
+from app.adapters.notification import NotificationAdapter
 from app.security import decrypt_phone
 
 
@@ -34,7 +34,7 @@ def process_outbox(db: Session, *, now: datetime | None = None, limit: int = 50)
         .all()
     )
     sent = failed = 0
-    adapter = MockNotificationAdapter()
+    adapter = NotificationAdapter(settings)
     for message in messages:
         if message.idempotency_key and db.query(DeliveryAttempt).filter(DeliveryAttempt.message_id == message.message_id, DeliveryAttempt.status == "sent").first():
             message.status = "sent"
@@ -44,6 +44,10 @@ def process_outbox(db: Session, *, now: datetime | None = None, limit: int = 50)
         if profile and not bool(flags.get("contact_me", flags.get("contact", False))):
             message.status = "cancelled_consent"
             db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="cancelled_consent", error="contact consent withdrawn"))
+            continue
+        if message.channel == "whatsapp_call" and profile and not bool(flags.get("whatsapp_call", False)):
+            message.status = "cancelled_consent"
+            db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="cancelled_consent", error="WhatsApp call consent withdrawn"))
             continue
         event_id = (message.content or {}).get("event_id") if isinstance(message.content, dict) else None
         if event_id:

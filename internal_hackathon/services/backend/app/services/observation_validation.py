@@ -86,6 +86,8 @@ def validate_observation(*, source: str, metric: str, value: Any, ttl_seconds: i
             raise HTTPException(status_code=422, detail="mandi_price_deviation_pct must be numeric or an object")
         if isinstance(value, dict) and "below_msp" in value and not isinstance(value["below_msp"], bool):
             raise HTTPException(status_code=422, detail="below_msp must be boolean")
+    if metric == "mandi_below_msp" and not isinstance(value, bool):
+        raise HTTPException(status_code=422, detail="mandi_below_msp must be boolean")
     if metric == "due_window":
         if not isinstance(value, dict):
             raise HTTPException(status_code=422, detail="due_window must be an object")

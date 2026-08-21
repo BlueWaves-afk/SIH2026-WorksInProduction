@@ -6,4 +6,5 @@ import tempfile
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("AUTH_REQUIRED", "false")
+os.environ.setdefault("LLM_EXTERNAL_ALLOWED", "false")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mktemp(prefix='kisansetu-test-', suffix='.sqlite')}")

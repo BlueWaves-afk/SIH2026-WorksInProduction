@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import base64
+import binascii
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.api.v1.endpoints.cases import _case_response
@@ -10,6 +12,7 @@ from app.api.v1.endpoints.risk_events import event_response
 from app.core.config import settings
 from app.core.database import get_db
 from app.integrations.copilot import template_brief_builder
+from app.integrations.sarvam import SarvamSpeechProviderError, build_sarvam_speech_provider
 from app.models.case import AlertCase
 from app.models.farmer import FarmerProfile
 from app.models.risk import RiskEvent
@@ -20,6 +23,9 @@ from app.schemas import (
     CopilotBriefRequest,
     CopilotConversationRequest,
     CopilotConversationResponse,
+    CopilotSpeechSynthesizeRequest,
+    CopilotSpeechTranscribeRequest,
+    CopilotSpeechTranscribeResponse,
     SchemeMatch,
 )
 from app.security import AuthContext, authorize_farmer_profile, require_roles
@@ -153,3 +159,79 @@ def copilot_chat(
         citations=answer.citations,
         event_id=answer.event_id,
     )
+
+
+def _speech_profile(payload_farmer_token: str, db: Session, actor: AuthContext) -> FarmerProfile:
+    profile = db.query(FarmerProfile).filter(FarmerProfile.farmer_token == payload_farmer_token).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Farmer profile not found")
+    authorize_farmer_profile(actor, profile)
+    if not bool((profile.consent_flags or {}).get("store_data", (profile.consent_flags or {}).get("storage", False))):
+        raise HTTPException(status_code=403, detail="Storage consent is required for speech support")
+    return profile
+
+
+@router.post("/speech/transcribe", response_model=CopilotSpeechTranscribeResponse)
+def copilot_speech_transcribe(
+    payload: CopilotSpeechTranscribeRequest,
+    db: Session = Depends(get_db),
+    actor: AuthContext = Depends(require_roles("farmer", "extension_officer", "district_admin", "admin", "auditor")),
+):
+    """Transcribe a short, non-persisted farmer audio clip through Sarvam."""
+
+    _speech_profile(payload.farmer_token, db, actor)
+    audio = _decode_audio(payload.audio_base64)
+    provider = build_sarvam_speech_provider(settings)
+    try:
+        result = provider.transcribe(audio, language_code=payload.language_code)
+    except SarvamSpeechProviderError as exc:
+        raise HTTPException(status_code=503, detail="Speech transcription is temporarily unavailable") from exc
+    record_audit(
+        db,
+        actor=actor,
+        action="copilot.speech.transcribe",
+        target_id=payload.farmer_token,
+        details={"provider": "sarvam", "language_code": result.language},
+    )
+    db.commit()
+    return CopilotSpeechTranscribeResponse(
+        text=result.text,
+        language_code=result.language,
+        confidence=result.confidence,
+    )
+
+
+@router.post("/speech/synthesize")
+def copilot_speech_synthesize(
+    payload: CopilotSpeechSynthesizeRequest,
+    db: Session = Depends(get_db),
+    actor: AuthContext = Depends(require_roles("farmer", "extension_officer", "district_admin", "admin", "auditor")),
+):
+    """Render approved/grounded text to audio through Sarvam TTS."""
+
+    _speech_profile(payload.farmer_token, db, actor)
+    provider = build_sarvam_speech_provider(settings)
+    try:
+        audio = provider.synthesize(payload.text, language_code=payload.language_code)
+    except SarvamSpeechProviderError as exc:
+        raise HTTPException(status_code=503, detail="Speech synthesis is temporarily unavailable") from exc
+    record_audit(
+        db,
+        actor=actor,
+        action="copilot.speech.synthesize",
+        target_id=payload.farmer_token,
+        details={"provider": "sarvam", "language_code": payload.language_code},
+    )
+    db.commit()
+    return Response(content=audio, media_type="audio/wav", headers={"cache-control": "no-store", "x-provider": "sarvam"})
+
+
+def _decode_audio(value: str) -> bytes:
+    encoded = value.split(",", 1)[1] if value.startswith("data:") and "," in value else value
+    try:
+        audio = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise HTTPException(status_code=422, detail="audio_base64 is invalid") from exc
+    if not audio or len(audio) > 6_000_000:
+        raise HTTPException(status_code=422, detail="audio payload must be between 1 byte and 6 MB")
+    return audio

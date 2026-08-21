@@ -14,6 +14,12 @@ It detects when a farmer may need help early, explains *why* in their own langua
 > submission, the team must reconcile the title, wording, PS identifier, owner, and evaluation
 > requirements against the authenticated SIH SPOC portal and preserve that official version here.
 
+> **Runtime amendment (August 2026):** The implementation has moved the conversation and speech
+> provider from the planning-era Bhashini reference to server-side Sarvam adapters. WhatsApp Cloud
+> API is the default outbound message channel. Calls require explicit `whatsapp_call` consent and an
+> approved partner or Sarvam Voice Agents telephony deployment; WhatsApp voice remains account/enterprise
+> gated. The deterministic FDI v2 scorer remains authoritative.
+
 ---
 
 ## 0. One-paragraph pitch
