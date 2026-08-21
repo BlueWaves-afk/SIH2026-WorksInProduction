@@ -17,6 +17,9 @@ from app.models.observation import Observation as ObservationRow
 from app.models.risk import RiskEvent as RiskEventRow
 
 
+BOOTSTRAP_EVENT_FLAG = "bootstrap: awaiting signal data"
+
+
 def _aware(value: datetime | None) -> datetime:
     if value is None:
         return datetime.now(UTC)
@@ -93,6 +96,11 @@ def compute_for_profile(
         .limit(3)
         .all()
     ):
+        # A profile-create bootstrap event is a truthful UI placeholder, not
+        # an observed band. It must not hold the first real replay/live signal
+        # behind hysteresis; all scored events remain part of the history.
+        if BOOTSTRAP_EVENT_FLAG in (row.context_flags or []):
+            continue
         # The pure engine only needs the prior band/timestamps for hysteresis.
         from scoring_engine.types import RiskEvent as ScoringRiskEvent
 

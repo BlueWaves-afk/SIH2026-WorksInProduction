@@ -7,6 +7,8 @@ from app.models.farmer import FarmerProfile as FarmerProfileRow
 from app.schemas import FarmerProfile, FarmerProfileCreate
 from app.security import AuthContext, encrypt_phone, new_farmer_token, require_roles
 from app.security.audit import record_audit
+from app.services.scoring import BOOTSTRAP_EVENT_FLAG, compute_for_profile
+from app.services.workflow import persist_event_with_workflow
 
 router = APIRouter()
 
@@ -60,6 +62,16 @@ def create_farmer_profile(
                 proof={"version": "1", "actor": actor.principal},
             )
         )
+    # Bootstrap the first, conservative status in the same transaction as the
+    # profile. The farmer home screen reads RiskEvent immediately after setup;
+    # without this empty-observation score, a valid new profile has no status
+    # row and the UI can only report "No saved status is available". Missing
+    # signals intentionally produce a green, low-confidence event with the
+    # scorer's suppression flag rather than fabricated risk.
+    db.flush()
+    initial_event = compute_for_profile(db, db_profile, rows=[])
+    initial_event.context_flags = [*initial_event.context_flags, BOOTSTRAP_EVENT_FLAG]
+    persist_event_with_workflow(db, db_profile, initial_event, actor=actor)
     record_audit(db, actor=actor, action="farmer_profile.create", target_id=farmer_token, details={"village_id": profile.village_id})
     db.commit()
     db.refresh(db_profile)

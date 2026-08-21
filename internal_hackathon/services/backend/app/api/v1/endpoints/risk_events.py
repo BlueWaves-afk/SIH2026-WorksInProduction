@@ -14,7 +14,7 @@ from app.schemas import Page, RecalculateRequest, RiskEvent as RiskEventSchema
 from app.security import AuthContext, authorize_farmer_profile, require_roles
 from app.security.audit import record_audit
 from app.integrations.live_data import LiveIngestionError, sync_profile_observations
-from app.services.scoring import compute_for_profile
+from app.services.scoring import BOOTSTRAP_EVENT_FLAG, compute_for_profile
 from app.services.workflow import persist_event_with_workflow
 
 router = APIRouter()
@@ -114,4 +114,11 @@ def list_risk_events(
         query = query.filter(RiskEvent.farmer_token == owned.farmer_token)
     total = query.count()
     rows = query.order_by(RiskEvent.evaluated_at.desc(), RiskEvent.id.desc()).offset(offset).limit(limit).all()
+    # Keep the setup placeholder visible until a real signal exists, then
+    # prefer scored events for the farmer's status rather than the newer
+    # bootstrap row. This does not alter officer-wide queue totals.
+    if farmer_token:
+        scored_rows = [row for row in rows if BOOTSTRAP_EVENT_FLAG not in (row.context_flags or [])]
+        if scored_rows:
+            rows = scored_rows
     return Page[RiskEventSchema](items=[event_response(row) for row in rows], total=total, limit=limit, offset=offset)

@@ -104,6 +104,7 @@
 - [x] Added MockTransport coverage for official IMD rainfall fields, AGMARKNET modal/baseline/MSP parsing, missing endpoints, and the live provider-to-score API path.
 - [x] Added an API integration test covering profile → replay → Red event → officer case → copilot → resolution and stale-data suppression.
 - [x] Added frontend API-base/environment support and adapted farmer/officer clients to the paginated backend contracts.
+- [x] Bootstrapped a conservative first RiskEvent during farmer profile creation so a new farmer has an honest initial status before live/replay observations arrive; bootstrap placeholders are excluded from scoring hysteresis once real signals exist.
 - [x] Added browser-safe Supabase session/token integration to both apps; only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are accepted client-side.
 - [x] Added farmer phone-OTP and officer email/password session gates, role guards and explicit production connection states.
 - [x] Bound opaque farmer resources to the Supabase Auth subject; possession of a farmer token no longer authorizes access.

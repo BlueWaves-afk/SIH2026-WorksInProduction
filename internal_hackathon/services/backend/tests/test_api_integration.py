@@ -114,6 +114,21 @@ def test_error_envelope_and_consent_withdrawal_are_enforced():
         assert observation.status_code == 403
 
 
+def test_profile_bootstraps_a_conservative_initial_status():
+    token = "farmer-initial-status"
+    with TestClient(app) as client:
+        created = client.post("/api/v1/farmer-profiles", json=_profile(token))
+        assert created.status_code == 201
+
+        events = client.get(f"/api/v1/risk-events?farmer_token={token}")
+        assert events.status_code == 200
+        items = events.json()["items"]
+        assert len(items) == 1
+        assert items[0]["band"] == "green"
+        assert items[0]["confidence"] == 0
+        assert "escalation suppressed: low confidence" in items[0]["context_flags"]
+
+
 def test_farmer_token_is_not_a_bearer_credential():
     owner_headers = {"x-demo-role": "farmer", "x-demo-principal": "supabase-user-owner"}
     stranger_headers = {"x-demo-role": "farmer", "x-demo-principal": "supabase-user-stranger"}

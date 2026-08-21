@@ -31,6 +31,7 @@ from app.schemas import (
 from app.security import AuthContext, authorize_farmer_profile, require_roles
 from app.security.audit import record_audit
 from app.services.copilot_conversation import answer_farmer_message
+from app.services.scoring import BOOTSTRAP_EVENT_FLAG
 
 router = APIRouter()
 
@@ -122,12 +123,14 @@ def copilot_chat(
 
     # A stale score is never narrated.  If there is no active event, the agent
     # receives an explicit empty context and must tell the farmer to refresh.
-    event_row = (
+    event_rows = (
         db.query(RiskEvent)
         .filter(RiskEvent.farmer_token == payload.farmer_token, RiskEvent.expires_at >= datetime.utcnow())
         .order_by(RiskEvent.evaluated_at.desc(), RiskEvent.id.desc())
-        .first()
+        .all()
     )
+    scored_events = [row for row in event_rows if BOOTSTRAP_EVENT_FLAG not in (row.context_flags or [])]
+    event_row = (scored_events or event_rows or [None])[0]
     event = event_response(event_row) if event_row else None
     answer = answer_farmer_message(
         settings=settings,
