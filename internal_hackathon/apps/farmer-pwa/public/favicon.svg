@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>KisanSetu</title>
+  <defs>
+    <linearGradient id="kisanRainbow" x1="8" y1="56" x2="56" y2="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset=".32" stop-color="#14b8a6"/>
+      <stop offset=".62" stop-color="#facc15"/>
+      <stop offset=".82" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#f8fbfa"/>
+  <g fill="none" stroke="url(#kisanRainbow)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M31.5 39.5C20.4 38.5 14.6 32.7 15.5 21.5c11.2-.9 17 4.9 16 16Z" stroke-width="4.6"/>
+    <path d="M32.5 40.5c11.1-.9 16.9-6.7 16-17.9-11.2-.9-17 4.9-16 16Z" stroke-width="4.6"/>
+    <path d="M32 40V15.5" stroke-width="4.6"/>
+    <path d="M32 28.5 22.5 21M32 31.5l9.5-7.5" stroke-width="3.6"/>
+  </g>
+</svg>

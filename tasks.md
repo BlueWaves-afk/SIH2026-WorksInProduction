@@ -83,6 +83,12 @@
 - [x] Preserved officer workflows for case selection, acknowledgement, resolution, copilot briefing, cited references and draft-message approval.
 - [x] Added responsive collapse for phone-sized officer views and replaced the officer rail shield mark with the project-local KisanSetu logo.
 
+### Browser diagnostics — verified
+
+- [x] Reused one browser-level Supabase client across the farmer and officer workspaces, removing duplicate GoTrue listeners for the shared auth storage key.
+- [x] Added the project-local KisanSetu favicon to both app shells and verified it is emitted in each production build, eliminating the app-owned favicon 404.
+- [x] Confirmed the remaining `chrome-extension://` frame/runtime messages originate in browser tooling rather than the KisanSetu bundles.
+
 ### Unified backend — verified
 
 - [x] Selected `services/backend` as the only FastAPI composition root; documented the decision in `design/adr_001_unified_backend.md`.

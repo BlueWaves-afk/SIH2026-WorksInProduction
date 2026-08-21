@@ -1,10 +1,21 @@
-import { createClient, type Session } from "@supabase/supabase-js";
+import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-/** Browser-safe Supabase Auth boundary. Service keys never belong here. */
-export const supabase = url && anonKey ? createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
+/**
+ * Browser-safe Supabase Auth boundary. Service keys never belong here.
+ *
+ * Farmer and officer workspaces are mounted together in the unified portal.
+ * Reuse the browser singleton rather than constructing a second GoTrue client
+ * against the same auth storage key.
+ */
+type SupabaseGlobal = typeof globalThis & { __kisanSetuSupabase?: SupabaseClient };
+const browserGlobal = globalThis as SupabaseGlobal;
+
+export const supabase = url && anonKey
+  ? (browserGlobal.__kisanSetuSupabase ??= createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true } }))
+  : null;
 export const demoMode = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === "true";
 const configuredAuthFlag = import.meta.env.VITE_AUTH_REQUIRED as string | undefined;
 export const authRequired = configuredAuthFlag ? configuredAuthFlag === "true" : !demoMode;
