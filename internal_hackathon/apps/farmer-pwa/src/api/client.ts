@@ -43,20 +43,30 @@ async function requestResponse(path: string, init?: RequestInit): Promise<Respon
 }
 
 export async function submitFarmerProfile(draft: FarmerProfileDraft): Promise<{ farmer_token: string }> {
-  const profile = await request<{ farmer_token: string }>("/api/v1/farmer-profiles", { method: "POST", body: JSON.stringify({
-    village_id: "demo-village",
-    crop: draft.crop,
-    locale: draft.locale,
-    sowing_date: new Date().toISOString().slice(0, 10),
-    irrigation_type: draft.irrigation,
-    area_band: "<1",
-    consent_flags: {
-      store_data: draft.consent_flags.storage,
-      contact_me: draft.consent_flags.contact,
-      use_analytics: draft.consent_flags.analytics,
-      due_window: draft.consent_flags.due_window,
-    },
-  }) });
+  let profile: { farmer_token: string };
+  try {
+    profile = await request<{ farmer_token: string }>("/api/v1/farmer-profiles", { method: "POST", body: JSON.stringify({
+      village_id: "demo-village",
+      crop: draft.crop,
+      locale: draft.locale,
+      sowing_date: new Date().toISOString().slice(0, 10),
+      irrigation_type: draft.irrigation,
+      area_band: "<1",
+      consent_flags: {
+        store_data: draft.consent_flags.storage,
+        contact_me: draft.consent_flags.contact,
+        use_analytics: draft.consent_flags.analytics,
+        due_window: draft.consent_flags.due_window,
+      },
+    }) });
+  } catch (error) {
+    // Older backend deployments returned 409 for an existing authenticated
+    // profile. Recover by signing in to that profile instead of making the
+    // farmer repeat setup or showing a raw conflict error.
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    if (!message.includes("already has a profile") && !message.includes("profile already exists")) throw error;
+    profile = await request<{ farmer_token: string }>("/api/v1/farmer-profiles/me");
+  }
   window.localStorage.setItem("kisansetu.farmer_token", profile.farmer_token);
   return profile;
 }

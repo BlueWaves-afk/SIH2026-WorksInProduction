@@ -129,6 +129,17 @@ def test_profile_bootstraps_a_conservative_initial_status():
         assert "escalation suppressed: low confidence" in items[0]["context_flags"]
 
 
+def test_repeating_authenticated_farmer_setup_reuses_existing_profile():
+    headers = {"x-demo-role": "farmer", "x-demo-principal": "repeat-onboarding-user"}
+    with TestClient(app) as client:
+        first = client.post("/api/v1/farmer-profiles", json=_profile("first-token"), headers=headers)
+        assert first.status_code == 201
+
+        repeated = client.post("/api/v1/farmer-profiles", json=_profile("second-token"), headers=headers)
+        assert repeated.status_code == 200
+        assert repeated.json()["farmer_token"] == first.json()["farmer_token"]
+
+
 def test_farmer_token_is_not_a_bearer_credential():
     owner_headers = {"x-demo-role": "farmer", "x-demo-principal": "supabase-user-owner"}
     stranger_headers = {"x-demo-role": "farmer", "x-demo-principal": "supabase-user-stranger"}

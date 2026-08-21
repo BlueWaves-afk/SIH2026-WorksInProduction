@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -27,12 +27,21 @@ def get_my_farmer_profile(
 @router.post("", response_model=FarmerProfile, status_code=status.HTTP_201_CREATED)
 def create_farmer_profile(
     profile: FarmerProfileCreate,
+    response: Response,
     db: Session = Depends(get_db),
     actor: AuthContext = Depends(require_roles("farmer", "extension_officer", "district_admin", "admin")),
 ):
     farmer_token = profile.farmer_token or new_farmer_token()
-    if actor.role == "farmer" and db.query(FarmerProfileRow).filter(FarmerProfileRow.auth_subject == actor.principal).first():
-        raise HTTPException(status_code=409, detail="Authenticated farmer already has a profile")
+    # Profile setup is intentionally idempotent for an authenticated farmer.
+    # A farmer can return to onboarding after an interrupted redirect, a
+    # refresh, or a previously completed setup. Reusing the existing profile
+    # is safe because the auth subject is the server-verified identity; it also
+    # prevents duplicate consent rows and duplicate bootstrap risk events.
+    if actor.role == "farmer":
+        existing_profile = db.query(FarmerProfileRow).filter(FarmerProfileRow.auth_subject == actor.principal).first()
+        if existing_profile:
+            response.status_code = status.HTTP_200_OK
+            return existing_profile
     if db.query(FarmerProfileRow).filter(FarmerProfileRow.farmer_token == farmer_token).first():
         raise HTTPException(status_code=409, detail="Farmer profile already exists")
     flags = profile.consent_flags.model_dump()
