@@ -94,6 +94,7 @@ export function App() {
   const recordingChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const voiceMountedRef = useRef(true);
   const t = copy[locale];
   const tr = translate(locale as I18nLocale);
@@ -135,6 +136,7 @@ export function App() {
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
       audioRef.current?.pause();
+      window.speechSynthesis?.cancel();
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     };
   }, []);
@@ -203,6 +205,10 @@ export function App() {
       if (demoMode && !farmerToken) throw new Error("demo fixture conversation");
       const response = await sendCopilotMessage(question, locale, messages);
       setMessages((current) => [...current, { id: `assistant-${Date.now()}`, role: "assistant", text: response.reply, created_at: new Date().toISOString() }]);
+      // Narrate the fresh answer when possible. Browser autoplay policies may
+      // reject the asynchronous playback; playAnswerText then falls back to
+      // the device voice and leaves the speaker button available for retry.
+      void playAnswerText(response.reply, locale);
     } catch {
       const lower = question.toLowerCase();
       const answer = lower.includes("why") || lower.includes("का") || lower.includes("का?")
@@ -211,6 +217,7 @@ export function App() {
           ? "I can compare nearby market prices. Open Nearby markets to review the latest available quotes before deciding."
           : "The safest next step is to share your crop condition with the agriculture officer. I can show the approved action plan or explain any driver.";
       setMessages((current) => [...current, { id: `assistant-${Date.now()}`, role: "assistant", text: answer, created_at: new Date().toISOString() }]);
+      void playAnswerText(answer, locale);
     } finally {
       setThinking(false);
     }
@@ -219,10 +226,76 @@ export function App() {
   function stopPlayback() {
     audioRef.current?.pause();
     audioRef.current = null;
+    window.speechSynthesis?.cancel();
+    speechRef.current = null;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     audioUrlRef.current = null;
     setVoiceState("idle");
     setVoiceStatus(null);
+  }
+
+  function playDeviceVoice(text: string, language: Locale): boolean {
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return false;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === "hi" ? "hi-IN" : language === "mr" ? "mr-IN" : "en-IN";
+    utterance.rate = 0.94;
+    utterance.onend = () => {
+      if (!voiceMountedRef.current) return;
+      speechRef.current = null;
+      setVoiceState("idle");
+      setVoiceStatus(null);
+    };
+    utterance.onerror = () => {
+      if (!voiceMountedRef.current) return;
+      speechRef.current = null;
+      setVoiceState("idle");
+      setVoiceStatus(null);
+      setVoiceError("Your device could not play the spoken answer. Tap the speaker again or read the text above.");
+    };
+    speechRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setVoiceState("playing");
+    setVoiceStatus("Playing with your device voice…");
+    return true;
+  }
+
+  async function playAnswerText(text: string, language: Locale) {
+    if (!text.trim() || voiceState !== "idle") return;
+    setVoiceError(null);
+    setVoiceState("synthesizing");
+    setVoiceStatus("Preparing the spoken answer…");
+    try {
+      const audioBlob = await synthesizeSpeech(text, language);
+      if (!audioBlob.size) throw new Error("The speech response was empty.");
+      const url = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => stopPlayback();
+      audio.onerror = () => {
+        if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+        audioRef.current = null;
+        if (!playDeviceVoice(text, language)) {
+          setVoiceState("idle");
+          setVoiceStatus(null);
+          setVoiceError("The spoken answer could not be played. Tap the speaker again or read the text above.");
+        }
+      };
+      await audio.play();
+      setVoiceState("playing");
+      setVoiceStatus("Playing the spoken answer…");
+    } catch (reason) {
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+      audioRef.current = null;
+      if (!playDeviceVoice(text, language)) {
+        setVoiceState("idle");
+        setVoiceStatus(null);
+        setVoiceError(reason instanceof Error ? `${reason.message} Tap the speaker to retry.` : "Spoken answers are unavailable. Tap the speaker to retry.");
+      }
+    }
   }
 
   async function toggleVoiceCapture() {
@@ -294,35 +367,7 @@ export function App() {
     if (voiceState !== "idle") return;
     const lastAssistant = [...messages].reverse().find((message) => message.role === "assistant");
     if (!lastAssistant) return;
-    setVoiceError(null);
-    setVoiceState("synthesizing");
-    setVoiceStatus("Preparing the spoken answer…");
-    try {
-      const audioBlob = await synthesizeSpeech(lastAssistant.text, locale);
-      const url = URL.createObjectURL(audioBlob);
-      audioUrlRef.current = url;
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => stopPlayback();
-      audio.onerror = () => {
-        if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-        audioRef.current = null;
-        setVoiceState("idle");
-        setVoiceStatus(null);
-        setVoiceError("The spoken answer could not be played. You can read the answer above.");
-      };
-      await audio.play();
-      setVoiceState("playing");
-      setVoiceStatus("Playing the spoken answer…");
-    } catch (reason) {
-      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-      audioRef.current = null;
-      setVoiceState("idle");
-      setVoiceStatus(null);
-      setVoiceError(reason instanceof Error ? reason.message : "Spoken answers are unavailable. You can read the answer above.");
-    }
+    await playAnswerText(lastAssistant.text, locale);
   }
 
   if (!onboarded) {
