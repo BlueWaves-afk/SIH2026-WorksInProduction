@@ -124,7 +124,9 @@ kill switch return the template response instead.
 1. Apply `services/backend/alembic upgrade head` against a disposable Supabase
    branch/project and verify PostGIS.
 2. Set backend-only variables on Render; set only the two `VITE_*` variables on
-   Vercel.
+   Vercel. `CORS_ORIGINS` should include the production portal origin
+   `https://sih-2026-works-in-production.vercel.app` (the backend also includes
+   the known portal aliases as exact, credential-safe defaults).
 3. Keep `AUTH_REQUIRED=true`, `ENV=production`, `LIVE_DATA_ENABLED=false` for
    the first authenticated smoke test.
 4. Enable one live source at a time and verify `/readyz`, `/api/v1/ingestion/health`,

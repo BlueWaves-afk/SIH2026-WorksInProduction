@@ -118,7 +118,15 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        configured = [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        # Keep the deployed portal reachable even when an older Render
+        # environment still contains the local-only CORS default. These are
+        # exact origins (not wildcards), so credentials remain safe to use.
+        deployed_portals = [
+            "https://sih-2026-works-in-production.vercel.app",
+            "https://sih-2026-works-in-production-i7ezf4g27.vercel.app",
+        ]
+        return list(dict.fromkeys([*configured, *deployed_portals]))
 
     @property
     def live_signal_source_list(self) -> list[str]:
