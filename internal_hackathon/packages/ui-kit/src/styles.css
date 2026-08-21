@@ -28,8 +28,16 @@ button { cursor: pointer; }
 .auth-page { display: grid; min-height: 100dvh; place-items: center; padding: 24px; color: #171a20; background: radial-gradient(circle at 22% 5%, rgba(47,128,237,.12), transparent 28%), radial-gradient(circle at 78% 95%, rgba(39,174,96,.12), transparent 30%), #f7f9fb; }
 .auth-card { width: min(100%, 430px); border: 1px solid #e5e8ec; border-radius: 28px; padding: clamp(28px, 7vw, 44px); background: rgba(255,255,255,.94); box-shadow: 0 24px 80px rgba(31,45,61,.1); }
 .auth-page.is-officer .auth-card { width: min(100%, 480px); }
-.auth-mark { display: inline-grid; position: relative; width: 58px; height: 58px; margin-bottom: 28px; place-items: center; border: 1px solid transparent; border-radius: 19px; color: #1d65d6; background: linear-gradient(#fff,#fff) padding-box, linear-gradient(130deg,#2f80ed,#ff6b45,#f2c94c,#219653) border-box; }
-.auth-mark svg + svg { position: absolute; right: -7px; bottom: -6px; border: 3px solid white; border-radius: 50%; color: #16835f; background: white; }
+.auth-brand-logo { display: block; width: 64px; height: 64px; margin-bottom: 24px; border: 1px solid transparent; border-radius: 20px; background: url('./assets/kisansetu-mark.webp') center/contain no-repeat, linear-gradient(#fff,#fff) padding-box, linear-gradient(130deg,#2f80ed,#ff6b45,#f2c94c,#219653) border-box; background-origin: border-box; box-shadow: 0 8px 22px rgba(31,45,61,.1); }
+.auth-role-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 22px 0 24px; }
+.auth-role-panel { display: flex; min-height: 112px; flex-direction: column; align-items: flex-start; gap: 5px; border: 1px solid #e1e6eb; border-radius: 18px; padding: 14px; color: #596575; text-align: left; background: #f8fafc; transition: border-color .18s, box-shadow .18s, transform .18s, background .18s; }
+.auth-role-panel:hover { transform: translateY(-1px); border-color: #a8c5f2; }
+.auth-role-panel.is-active { border-color: transparent; background: linear-gradient(#fff,#fff) padding-box, linear-gradient(130deg,#2f80ed,#ff6b45,#f2c94c,#219653) border-box; box-shadow: 0 8px 24px rgba(31,45,61,.08); }
+.auth-role-panel strong { color: #171a20; font-size: .9rem; }
+.auth-role-panel small { color: #7b8491; font-size: .72rem; line-height: 1.35; }
+.auth-role-logo, .auth-role-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 10px; }
+.auth-role-logo { background: url('./assets/kisansetu-mark.webp') center/contain no-repeat; }
+.auth-role-icon { color: #236fd4; background: #eaf2ff; }
 .auth-kicker { margin: 0 0 10px; color: #687384; font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
 .auth-card h1 { margin: 0 0 12px; color: #171a20; font-size: clamp(1.8rem, 7vw, 2.5rem); line-height: 1.08; }
 .auth-card > p:not(.auth-kicker):not(.auth-error) { margin-bottom: 28px; color: #6c7685; line-height: 1.6; }

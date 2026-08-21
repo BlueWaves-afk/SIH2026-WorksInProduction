@@ -9,6 +9,19 @@ export const demoMode = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE ==
 const configuredAuthFlag = import.meta.env.VITE_AUTH_REQUIRED as string | undefined;
 export const authRequired = configuredAuthFlag ? configuredAuthFlag === "true" : !demoMode;
 
+/**
+ * Supabase uses the project Site URL when a signup call does not provide a
+ * redirect. That default is often localhost in a new project, so production
+ * confirmation links can send a farmer to the wrong host. Prefer an explicit
+ * deployment URL, then fall back to the origin that actually opened the app.
+ */
+export function authRedirectUrl(): string {
+  const configured = (import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined)?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  if (typeof window !== "undefined") return window.location.origin;
+  return "http://localhost:5173";
+}
+
 export async function accessToken(): Promise<string | null> {
   if (supabase) {
     const { data } = await supabase.auth.getSession();
@@ -56,10 +69,20 @@ export async function signUpWithEmail(email: string, password: string) {
   const result = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { role: "farmer" } },
+    options: { data: { role: "farmer" }, emailRedirectTo: authRedirectUrl() },
   });
   if (result.error) throw result.error;
   return result.data;
+}
+
+export async function resendSignupConfirmation(email: string) {
+  if (!supabase) throw new Error("Supabase Auth is not configured");
+  const result = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: authRedirectUrl() },
+  });
+  if (result.error) throw result.error;
 }
 
 export async function signOut() {

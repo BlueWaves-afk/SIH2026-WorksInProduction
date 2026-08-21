@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowRight, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
 import { authRequired, currentSession, observeSession, signIn, signOut, supabase } from "./supabase";
 
 const OFFICER_ROLES = new Set(["extension_officer", "district_admin", "admin", "auditor"]);
@@ -30,7 +30,7 @@ export function OfficerAuthGate({ children }: { children: ReactNode }) {
 
   const role = String(session?.user.app_metadata?.role ?? "");
   if (session && !OFFICER_ROLES.has(role)) {
-    return <AuthFrame><div className="auth-mark"><ShieldCheck size={27} /></div><p className="auth-kicker">ACCESS RESTRICTED</p><h1>This account has no officer role.</h1><p>An administrator must assign an extension-officer or district role in Supabase app metadata.</p><button className="auth-submit" onClick={() => void signOut()}>Sign out</button></AuthFrame>;
+    return <AuthFrame><div className="auth-brand-logo" aria-label="KisanSetu" role="img" /><p className="auth-kicker">ACCESS RESTRICTED</p><h1>This account has no officer role.</h1><p>An administrator must assign an extension-officer or district role in Supabase app metadata.</p><button className="auth-submit" onClick={() => void signOut()}>Sign out</button></AuthFrame>;
   }
   if (session) return children;
 
@@ -54,7 +54,7 @@ export function OfficerAuthGate({ children }: { children: ReactNode }) {
 
   return (
     <AuthFrame>
-      <div className="auth-mark"><ShieldCheck size={28} /></div>
+      <div className="auth-brand-logo" aria-label="KisanSetu" role="img" />
       <p className="auth-kicker">KISANSETU OPERATIONS</p>
       <h1>Officer sign in</h1>
       <p>Use your authorised district or extension account.</p>
