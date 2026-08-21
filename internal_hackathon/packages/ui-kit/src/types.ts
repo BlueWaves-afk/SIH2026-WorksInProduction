@@ -108,6 +108,7 @@ export interface ConsentState {
   contact: boolean;
   analytics: boolean;
   due_window: boolean;
+  email_alerts: boolean;
 }
 
 export type CopilotRole = "assistant" | "farmer";

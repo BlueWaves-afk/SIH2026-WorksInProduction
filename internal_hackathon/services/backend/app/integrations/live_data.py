@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
+import structlog
 from adapters.core.interfaces import ObservationPayload, SignalRequest
 from adapters.sources.registry import build_registry
 from sqlalchemy.orm import Session
@@ -25,6 +26,8 @@ from app.services.observation_validation import validate_observation
 ADAPTER_SOURCES = ("imd", "agmarknet", "agristack", "bhashini", "bhuvan", "msp", "sentinel2", "soil")
 LIVE_SOURCES = ("imd", "agmarknet", "bhuvan", "msp", "sentinel2", "soil")
 SourceName = Literal["imd", "agmarknet", "bhuvan", "msp", "sentinel2", "soil"]
+
+logger = structlog.get_logger()
 
 
 class LiveIngestionError(RuntimeError):
@@ -232,9 +235,21 @@ def sync_profile_observations(
         end_date=effective_as_of.date(),
         sources=settings.live_signal_source_list,
     )
-    if result.errors:
+    # A live refresh is allowed to be partially successful.  For example, a
+    # market feed can be fresh while an optional satellite/soil provider is
+    # temporarily unavailable.  Discarding the good rows would make a valid
+    # source look stale and would unnecessarily force the scorer onto old
+    # observations.  Only fail closed when no source produced usable rows.
+    if result.errors and not result.observations:
         failed = ", ".join(item["source"] for item in result.errors)
         raise LiveIngestionError(f"live source unavailable: {failed}")
+    if result.errors:
+        logger.warning(
+            "live_ingestion_partial",
+            farmer=profile.farmer_token,
+            successful_sources=sorted({row.source for row in result.observations}),
+            failed_sources=sorted({item["source"] for item in result.errors}),
+        )
 
     persisted: list[Observation] = []
     for payload in result.observations:

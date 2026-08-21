@@ -360,6 +360,7 @@ export function ShieldPrivacyScreen({ consent, privacyText, onUpdate, onReviewSe
       <section className="shield-consent-card">
         <ConsentToggle label="Save my support information" description="Needed to show your status again." value={consent.storage} onChange={(value) => onUpdate("storage", value)} />
         <ConsentToggle label="Allow officer contact" description="Lets an extension officer call or refer your case." value={consent.contact} onChange={(value) => onUpdate("contact", value)} />
+        <ConsentToggle label="Email me alerts" description="Also send urgent alerts to your email. Set your address during setup." value={consent.email_alerts} onChange={(value) => onUpdate("email_alerts", value)} />
         <ConsentToggle label="Include me in anonymous trends" description="Only group results are used." value={consent.analytics} onChange={(value) => onUpdate("analytics", value)} />
         <ConsentToggle label="Share a coarse repayment window" description="Timing only; no account or lender data." value={consent.due_window} onChange={(value) => onUpdate("due_window", value)} />
       </section>

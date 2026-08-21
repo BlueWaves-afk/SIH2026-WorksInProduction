@@ -174,6 +174,36 @@ def _speech_profile(payload_farmer_token: str, db: Session, actor: AuthContext) 
     return profile
 
 
+def _require_configured_speech_provider():
+    """Build the Sarvam speech provider, failing fast with a specific message
+    when it is not configured so the client can distinguish a missing key from
+    a transient provider outage."""
+    provider = build_sarvam_speech_provider(settings)
+    if not provider.configured:
+        raise HTTPException(
+            status_code=503,
+            detail="Sarvam speech is not configured (SARVAM_API_KEY is missing on the backend)",
+            headers={"x-speech-status": "not_configured"},
+        )
+    return provider
+
+
+@router.get("/speech/health")
+def copilot_speech_health(
+    _: AuthContext = Depends(require_roles("farmer", "extension_officer", "district_admin", "admin", "auditor")),
+):
+    """Report whether live Sarvam speech is available, without exposing the key."""
+    provider = build_sarvam_speech_provider(settings)
+    return {
+        "configured": provider.configured,
+        "provider": "sarvam",
+        "stt_model": settings.sarvam_stt_model,
+        "tts_model": settings.sarvam_tts_model,
+        "stt_endpoint": settings.sarvam_stt_endpoint,
+        "tts_endpoint": settings.sarvam_tts_endpoint,
+    }
+
+
 @router.post("/speech/transcribe", response_model=CopilotSpeechTranscribeResponse)
 def copilot_speech_transcribe(
     payload: CopilotSpeechTranscribeRequest,
@@ -185,11 +215,15 @@ def copilot_speech_transcribe(
     _speech_profile(payload.farmer_token, db, actor)
     audio = _decode_audio(payload.audio_base64)
     mime_type = _audio_mime_type(payload.audio_mime_type)
-    provider = build_sarvam_speech_provider(settings)
+    provider = _require_configured_speech_provider()
     try:
         result = provider.transcribe(audio, language_code=payload.language_code, mime_type=mime_type)
     except SarvamSpeechProviderError as exc:
-        raise HTTPException(status_code=503, detail="Speech transcription is temporarily unavailable") from exc
+        raise HTTPException(
+            status_code=503,
+            detail=f"Speech transcription failed: {exc}",
+            headers={"x-speech-status": "provider_error"},
+        ) from exc
     record_audit(
         db,
         actor=actor,
@@ -214,11 +248,15 @@ def copilot_speech_synthesize(
     """Render approved/grounded text to audio through Sarvam TTS."""
 
     _speech_profile(payload.farmer_token, db, actor)
-    provider = build_sarvam_speech_provider(settings)
+    provider = _require_configured_speech_provider()
     try:
         audio = provider.synthesize(payload.text, language_code=payload.language_code)
     except SarvamSpeechProviderError as exc:
-        raise HTTPException(status_code=503, detail="Speech synthesis is temporarily unavailable") from exc
+        raise HTTPException(
+            status_code=503,
+            detail=f"Speech synthesis failed: {exc}",
+            headers={"x-speech-status": "provider_error"},
+        ) from exc
     record_audit(
         db,
         actor=actor,

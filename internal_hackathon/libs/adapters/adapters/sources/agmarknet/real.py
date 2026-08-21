@@ -35,11 +35,17 @@ class AgmarknetRealAdapter(ConfiguredRealAdapter):
 
         params = super()._request_params(req)
         if self.endpoint and "data.gov.in" in self.endpoint:
-            params.update({"format": "json", "limit": "1000"})
+            # Keep the request bounded.  The OGD resource is a national
+            # catalogue; an unfiltered 1,000-row request can time out before
+            # the scorer ever sees a fresh quote.  The adapter is called per
+            # farmer, so a small recent window is the safer default.
+            params.update({"format": "json", "limit": "100"})
             if self.api_key:
                 params["api-key"] = self.api_key
             if req.commodity:
                 params["filters[commodity]"] = req.commodity
+            if req.district_id:
+                params["filters[district]"] = req.district_id
             if req.mandi_id:
                 params["filters[market]"] = req.mandi_id
         return params
@@ -47,17 +53,17 @@ class AgmarknetRealAdapter(ConfiguredRealAdapter):
     def _parse_payload(self, payload: Any, fetched_at: datetime, req: SignalRequest) -> list[ObservationPayload]:
         result: list[ObservationPayload] = []
         for row in _rows_from_payload(payload):
-            commodity = str(first_value(row, ("commodity", "Commodity", "crop")) or "").strip()
+            commodity = str(first_value(row, ("commodity", "Commodity", "Commodity_Name", "crop")) or "").strip()
             if req.commodity and commodity and commodity.casefold() != req.commodity.casefold():
                 continue
             mandi_id = str(first_value(row, ("mandi_id", "market_id", "Market", "market")) or "").strip()
             if req.mandi_id and mandi_id and mandi_id.casefold() != req.mandi_id.casefold():
                 continue
             observed_at = parse_datetime(
-                first_value(row, ("observed_at", "date", "arrival_date", "Date", "price_date")),
+                first_value(row, ("observed_at", "date", "arrival_date", "Arrival_Date", "Date", "price_date")),
                 fetched_at,
             )
-            modal = as_number(first_value(row, ("modal_price", "Modal Price", "modal", "price")))
+            modal = as_number(first_value(row, ("modal_price", "Modal Price", "Modal_Price", "modal", "price")))
             if modal is not None:
                 result.append(
                     ObservationPayload(
@@ -79,7 +85,7 @@ class AgmarknetRealAdapter(ConfiguredRealAdapter):
                 deviation = ((modal - baseline) / baseline) * 100
             if deviation is None:
                 continue
-            msp = as_number(first_value(row, ("msp", "MSP", "minimum_support_price")))
+            msp = as_number(first_value(row, ("msp", "MSP", "minimum_support_price", "MSP_Price")))
             below_msp = bool(row.get("below_msp", msp is not None and modal is not None and modal < msp))
             result.append(
                 ObservationPayload(

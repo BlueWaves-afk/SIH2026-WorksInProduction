@@ -10,7 +10,7 @@ from app.models.outbox import OutboxMessage
 from app.models.farmer import FarmerProfile
 from app.models.risk import RiskEvent
 from app.adapters.notification import NotificationAdapter
-from app.security import decrypt_phone
+from app.security import decrypt_email, decrypt_phone
 
 
 def _in_quiet_hours(now: datetime) -> bool:
@@ -49,6 +49,10 @@ def process_outbox(db: Session, *, now: datetime | None = None, limit: int = 50)
             message.status = "cancelled_consent"
             db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="cancelled_consent", error="WhatsApp call consent withdrawn"))
             continue
+        if message.channel == "email" and profile and not bool(flags.get("email_alerts", False)):
+            message.status = "cancelled_consent"
+            db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="cancelled_consent", error="email alert consent withdrawn"))
+            continue
         event_id = (message.content or {}).get("event_id") if isinstance(message.content, dict) else None
         if event_id:
             event = db.query(RiskEvent).filter(RiskEvent.event_id == event_id).first()
@@ -56,8 +60,15 @@ def process_outbox(db: Session, *, now: datetime | None = None, limit: int = 50)
                 message.status = "suppressed_stale"
                 db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="suppressed_stale", error="risk event expired before delivery"))
                 continue
-        try:
+        if message.channel == "email":
+            destination = decrypt_email(profile.email_enc) if profile else None
+            if not destination:
+                message.status = "dead_letter"
+                db.add(DeliveryAttempt(message_id=message.message_id, channel=message.channel, status="dead_letter", error="no recoverable email address on file"))
+                continue
+        else:
             destination = decrypt_phone(message.farmer_phone) or message.farmer_phone
+        try:
             result = adapter.send_action_card(destination, message.channel, message.content or {})
             message.status = "sent"
             message.sent_at = now

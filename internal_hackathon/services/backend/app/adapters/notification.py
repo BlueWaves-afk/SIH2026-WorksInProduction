@@ -8,8 +8,34 @@ from app.adapters.whatsapp import (
     WhatsAppCloudAdapter,
     WhatsAppProviderError,
 )
+from app.integrations.email import EmailProviderError, build_email_provider
 
 logger = structlog.get_logger()
+
+_BAND_HEADLINE = {
+    "red": "urgent support alert",
+    "amber": "support advisory",
+    "green": "status update",
+}
+
+
+def _render_email(content: dict) -> tuple[str, str]:
+    """Build an identity-light subject + body from an outbox action card."""
+    band = str(content.get("band", "green")).lower()
+    headline = _BAND_HEADLINE.get(band, "status update")
+    subject = f"KisanSetu {headline} ({band.upper()})"
+    drivers = content.get("drivers") or []
+    lines = [f"Your KisanSetu support status is {band.upper()}.", ""]
+    reasons = [str(item.get("explanation")) for item in drivers if isinstance(item, dict) and item.get("explanation")]
+    if reasons:
+        lines.append("Why:")
+        lines.extend(f"  - {reason}" for reason in reasons[:3])
+        lines.append("")
+    lines.append("An agriculture officer may follow up. You can reply STOP-style controls in the app to change how we contact you.")
+    disclaimer = content.get("disclaimer")
+    if disclaimer:
+        lines += ["", str(disclaimer)]
+    return subject, "\n".join(lines)
 
 class MockNotificationAdapter:
     def send_action_card(self, farmer_phone: str, channel: str, content: dict):
@@ -29,6 +55,7 @@ class NotificationAdapter:
 
     def __init__(self, settings: Settings):
         self.settings = settings
+        self.email = build_email_provider(settings)
         self.mock = MockWhatsAppAdapter()
         self.whatsapp = WhatsAppCloudAdapter(
             access_token=settings.whatsapp_access_token,
@@ -56,6 +83,10 @@ class NotificationAdapter:
         )
 
     def send_action_card(self, farmer_phone: str, channel: str, content: dict):
+        # Email is orthogonal to the WhatsApp/voice provider — an opt-in farmer
+        # channel routed through its own provider regardless of notify_provider.
+        if channel == "email":
+            return self._send_email(farmer_phone, content)
         provider = self.settings.notify_provider.lower()
         if provider in {"mock", "fixture"}:
             return self.mock.send_action_card(farmer_phone, channel, content)
@@ -66,3 +97,11 @@ class NotificationAdapter:
                 return self.call.request_call(farmer_phone, content)
             return self.whatsapp.send_action_card(farmer_phone, channel, content)
         raise WhatsAppProviderError(f"unsupported notification provider: {self.settings.notify_provider}")
+
+    def _send_email(self, destination: str, content: dict):
+        subject, body = _render_email(content or {})
+        try:
+            result = self.email.send(to=[destination], subject=subject, text=body)
+        except EmailProviderError as exc:
+            raise WhatsAppProviderError(f"email delivery failed: {exc}") from exc
+        return {"status": "delivered", "receipt_id": result.message_id or "email"}

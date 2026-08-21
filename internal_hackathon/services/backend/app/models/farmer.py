@@ -18,6 +18,7 @@ class FarmerProfile(Base):
     irrigation_type = Column(String)
     area_band = Column(String)
     phone_enc = Column(String)
+    email_enc = Column(String, nullable=True)
     consent_flags = Column(JSON)
     secondary_crop = Column(String, nullable=True)
     schemes_enrolled = Column(JSON, default=list)

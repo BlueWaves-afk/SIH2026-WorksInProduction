@@ -4,7 +4,8 @@ import "ui-kit/styles.css";
 import { loadFarmerStatus, sendCopilotMessage, submitFarmerProfile, synthesizeSpeech, transcribeSpeech, type FarmerStatus } from "../api/client";
 import { demoMode } from "../auth/supabase";
 import { describeAge } from "../features/offline/statusCache";
-import { demoActionCard, demoAlerts, demoMandis, demoRiskEvent } from "../demo";
+import { demoActionCard, demoMandis, demoRiskEvent } from "../demo";
+import { buildAlerts } from "../features/alerts/fromStatus";
 import { ShieldDock, ShieldHome } from "./ShieldHome";
 import { ShieldOnboarding, type OnboardingResult } from "./ShieldOnboarding";
 import { ShieldAlertsScreen } from "./ShieldAlerts";
@@ -41,7 +42,7 @@ const irrigation = [
 ] as const;
 
 function initialConsent(): ConsentState {
-  return { storage: false, contact: false, analytics: false, due_window: false };
+  return { storage: false, contact: false, analytics: false, due_window: false, email_alerts: false };
 }
 
 function localizedActionCard(locale: Locale) {
@@ -105,6 +106,20 @@ export function App() {
 
   useEffect(() => setMessages(starterMessages(locale)), [locale]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [screen]);
+  // Auto-refresh: keep an open app current with the backend without a manual
+  // reload. Polls only while visible and online; also refreshes on regaining
+  // focus. Demo mode stays on its fixture.
+  useEffect(() => {
+    if (!onboarded || demoMode) return;
+    const id = window.setInterval(() => {
+      if (navigator.onLine && document.visibilityState === "visible") void refreshStatus();
+    }, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) void refreshStatus();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.clearInterval(id); document.removeEventListener("visibilitychange", onVisible); };
+  }, [onboarded]);
   useEffect(() => {
     voiceMountedRef.current = true;
     return () => {
@@ -124,7 +139,7 @@ export function App() {
     : "";
 
   const actionCard = localizedActionCard(locale);
-  const updateConsent = (key: keyof ConsentState) => (value: boolean) => setConsent((current) => ({ ...current, [key]: value, ...(key === "storage" && !value ? { contact: false, analytics: false, due_window: false } : {}) }));
+  const updateConsent = (key: keyof ConsentState) => (value: boolean) => setConsent((current) => ({ ...current, [key]: value, ...(key === "storage" && !value ? { contact: false, analytics: false, due_window: false, email_alerts: false } : {}), ...(key === "contact" && !value ? { email_alerts: false } : {}) }));
 
   function navigate(next: Screen) {
     setDirection(SCREEN_DEPTH[next] < SCREEN_DEPTH[screen] ? "back" : "forward");
@@ -141,6 +156,7 @@ export function App() {
         crop: result.crop,
         season: result.season,
         irrigation: result.irrigation,
+        email: result.email,
         consent_flags: result.consent,
       });
       window.localStorage.setItem("kisansetu.farmer_token", created.farmer_token);
@@ -328,7 +344,7 @@ export function App() {
     <main className="app-shell farmer-shell shield-farmer-shell"><div className="app-container">
       <div key={screen} className={`shield-view is-${direction}`}>
       {screen === "home" && <ShieldHome event={status.risk_event} updatedLabel={statusLabel} onOpenWhy={() => navigate("why")} onOpenAction={() => navigate("action")} onOpenCopilot={() => navigate("copilot")} onOpenMandi={() => navigate("mandi")} />}
-      {screen === "alerts" && <ShieldAlertsScreen alerts={demoAlerts} onOpenAlert={() => navigate("why")} />}
+      {screen === "alerts" && <ShieldAlertsScreen alerts={buildAlerts(status)} onOpenAlert={() => navigate("why")} />}
       {screen === "why" && <ShieldStatusScreen event={status.risk_event} onBack={() => navigate("alerts")} onAsk={() => navigate("copilot")} />}
       {screen === "action" && <ShieldActionScreen card={actionCard} onBack={() => navigate("why")} onAsk={() => navigate("copilot")} />}
       {screen === "mandi" && <ShieldMarketScreen mandis={status.mandis} onBack={() => navigate("home")} />}

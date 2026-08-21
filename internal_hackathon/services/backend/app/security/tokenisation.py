@@ -43,3 +43,13 @@ def decrypt_phone(value: str | None) -> str | None:
         return fernet.decrypt(value.removeprefix("enc:v1:").encode("ascii")).decode("utf-8")
     except Exception:
         return None
+
+
+# Email is contact PII and follows the same vault path as the phone number, so
+# a farmer who opts into email alerts is protected by the same encryption.
+def encrypt_email(email: str | None) -> str | None:
+    return encrypt_phone(email)
+
+
+def decrypt_email(value: str | None) -> str | None:
+    return decrypt_phone(value)

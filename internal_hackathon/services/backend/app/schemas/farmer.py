@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ConsentFlags(BaseModel):
     store_data: bool = False
     contact_me: bool = False
     whatsapp_call: bool = False
+    email_alerts: bool = False
     use_analytics: bool = False
     due_window: bool = False
 
@@ -26,7 +27,18 @@ class FarmerProfileCreate(BaseModel):
     soil_retention: str = Field(default="unknown", pattern="^(poor|medium|good|unknown)$")
     schemes_enrolled: list[str] = Field(default_factory=list, max_length=20)
     phone: str | None = Field(default=None, max_length=32, repr=False)
+    email: str | None = Field(default=None, max_length=254, repr=False, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     consent_flags: ConsentFlags = Field(default_factory=ConsentFlags)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _blank_email_is_none(cls, value: object) -> object:
+        # Onboarding may submit an empty string when the farmer skips email;
+        # normalise blanks to None so the pattern only validates real addresses.
+        if isinstance(value, str):
+            cleaned = value.strip().lower()
+            return cleaned or None
+        return value
 
 
 class FarmerProfile(FarmerProfileCreate):

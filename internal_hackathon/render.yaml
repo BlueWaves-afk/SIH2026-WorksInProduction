@@ -1,0 +1,64 @@
+# Render blueprint — web API + dedicated background worker.
+#
+# Why a separate worker: a free/starter web dyno sleeps when idle, which would
+# stop the ingest -> rescore -> outreach loop and the officer digest. Running
+# the jobs in a dedicated worker keeps the live loop advancing regardless of
+# web traffic. ENABLE_BACKGROUND_JOBS=false on the web service prevents the
+# cycle from running twice.
+#
+# Both services build from infra/docker/backend.Dockerfile with the repo as the
+# Docker context, so the sibling packages (adapters, identity-consent,
+# scoring-engine, ai-copilot) are installed into the image. Adjust rootDir in
+# the Render dashboard if your blueprint lives above internal_hackathon.
+services:
+  - type: web
+    name: kisansetu-api
+    runtime: docker
+    rootDir: internal_hackathon
+    dockerfilePath: infra/docker/backend.Dockerfile
+    dockerContext: .
+    healthCheckPath: /readyz
+    envVars:
+      - key: ENV
+        value: production
+      - key: ENABLE_BACKGROUND_JOBS
+        value: "false" # the worker owns the jobs
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: VAULT_ENCRYPTION_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+
+  - type: worker
+    name: kisansetu-worker
+    runtime: docker
+    rootDir: internal_hackathon
+    dockerfilePath: infra/docker/backend.Dockerfile
+    dockerContext: .
+    dockerCommand: python -m app.worker
+    envVars:
+      - key: ENV
+        value: production
+      - key: LIVE_DATA_ENABLED
+        value: "true" # enable live source fetching in the ingestion cycle
+      - key: INGESTION_INTERVAL_MINUTES
+        value: "45"
+      - key: DISTRICT_DIGEST_RECIPIENTS
+        sync: false # comma-separated officer emails
+      - key: EMAIL_PROVIDER
+        value: smtp
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: VAULT_ENCRYPTION_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false

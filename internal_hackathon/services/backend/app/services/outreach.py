@@ -120,5 +120,34 @@ def run_outreach_cycle(db: Session, *, now: datetime | None = None, actor: AuthC
         record_audit(db, actor=system_actor, action="outreach.decision", target_id=profile.farmer_token, details={"event_id": current.event_id, "channel": channel, "reason": reason})
         decisions.append({"farmer_token": profile.farmer_token, "status": "queued", "channel": channel, "event_id": current.event_id})
         created += 1
+
+        # Additive email alert (opt-in). Email is never the primary channel; it
+        # is a redundant copy for farmers who chose it, like PWA push. It rides
+        # the same contact decision, so it is not re-checked against the cap.
+        if flags.get("email_alerts", False) and profile.email_enc:
+            email_idem = f"outreach:{current.event_id}:email"
+            if not db.query(OutboxMessage).filter(OutboxMessage.idempotency_key == email_idem).first():
+                db.add(
+                    OutboxMessage(
+                        message_id=str(uuid4()),
+                        idempotency_key=email_idem,
+                        farmer_token=profile.farmer_token,
+                        farmer_phone=None,
+                        channel="email",
+                        content={
+                            "event_id": current.event_id,
+                            "band": str(current.band).lower(),
+                            "drivers": current.contributors or [],
+                            "disclaimer": current.disclaimer,
+                            "reason": reason,
+                            "locale": profile.locale or "en",
+                        },
+                        status="pending",
+                        consent_required="email_alerts",
+                    )
+                )
+                record_audit(db, actor=system_actor, action="outreach.decision", target_id=profile.farmer_token, details={"event_id": current.event_id, "channel": "email", "reason": reason})
+                decisions.append({"farmer_token": profile.farmer_token, "status": "queued", "channel": "email", "event_id": current.event_id})
+                created += 1
     db.commit()
     return {"created": created, "skipped": skipped, "decisions": decisions}

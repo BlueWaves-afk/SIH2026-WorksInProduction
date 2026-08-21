@@ -43,7 +43,9 @@ async def lifespan(app: FastAPI):
             tables = list(Base.metadata.sorted_tables)
         Base.metadata.create_all(bind=engine, tables=tables)
     scheduler = None
-    if settings.env.lower() != "test":
+    if settings.env.lower() != "test" and settings.enable_background_jobs:
+        # Set ENABLE_BACKGROUND_JOBS=false on the web dyno when a dedicated
+        # Render worker (python -m app.worker) owns the jobs, so cycles run once.
         from app.outreach.scheduler import start_scheduler
 
         scheduler = start_scheduler()

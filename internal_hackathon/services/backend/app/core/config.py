@@ -109,6 +109,33 @@ class Settings(BaseSettings):
     live_signal_sources: str = "imd,agmarknet"
     shadow_ml_enabled: bool = False
 
+    # Automatic live loop.  The background scheduler runs the ingest -> rescore
+    # cycle on this cadence.  Live source fetching is still gated by
+    # ``live_data_enabled``; when live is off the cycle resces stored/replay
+    # observations so bands still expire and hysteresis still advances.
+    ingestion_enabled: bool = True
+    ingestion_interval_minutes: int = Field(default=45, ge=5, le=1440)
+    ingestion_cohort_limit: int = Field(default=500, ge=1, le=100000)
+    # Set false on the web dyno when a dedicated Render worker owns the jobs, so
+    # the cycle is not executed twice.  The worker entrypoint always runs them.
+    enable_background_jobs: bool = True
+
+    # Officer/district email digest.  Email is an officer channel only (never a
+    # farmer alert channel — see module_9 design).  Falls back to a logging
+    # mock provider when SMTP is not configured, so the digest job is always
+    # operational and observable in local/demo mode.
+    email_provider: str = "mock"
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+    email_from_address: str = "alerts@kisansetu.local"
+    email_from_name: str = "KisanSetu Officer Alerts"
+    district_digest_enabled: bool = True
+    district_digest_hour: int = Field(default=6, ge=0, le=23)
+    district_digest_recipients: str = ""
+
     model_config = SettingsConfigDict(
         env_file=(".env.local", ".env"),
         env_file_encoding="utf-8",
@@ -140,6 +167,10 @@ class Settings(BaseSettings):
         if invalid:
             raise RuntimeError(f"LIVE_SIGNAL_SOURCES contains unsupported sources: {', '.join(invalid)}")
         return list(dict.fromkeys(selected))
+
+    @property
+    def district_digest_recipient_list(self) -> list[str]:
+        return list(dict.fromkeys(item.strip() for item in self.district_digest_recipients.split(",") if item.strip()))
 
     def validate_production(self) -> None:
         if self.env.lower() in {"production", "staging"}:

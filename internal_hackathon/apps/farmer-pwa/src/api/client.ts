@@ -8,6 +8,7 @@ export interface FarmerProfileDraft {
   crop: string;
   season: string;
   irrigation: string;
+  email?: string;
   consent_flags: ConsentState;
 }
 
@@ -52,11 +53,13 @@ export async function submitFarmerProfile(draft: FarmerProfileDraft): Promise<{ 
       sowing_date: new Date().toISOString().slice(0, 10),
       irrigation_type: draft.irrigation,
       area_band: "<1",
+      email: draft.email?.trim() || null,
       consent_flags: {
         store_data: draft.consent_flags.storage,
         contact_me: draft.consent_flags.contact,
         use_analytics: draft.consent_flags.analytics,
         due_window: draft.consent_flags.due_window,
+        email_alerts: draft.consent_flags.email_alerts,
       },
     }) });
   } catch (error) {

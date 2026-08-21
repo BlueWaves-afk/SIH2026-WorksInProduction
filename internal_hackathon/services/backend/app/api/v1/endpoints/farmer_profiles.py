@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.models.consent import ConsentLedger
 from app.models.farmer import FarmerProfile as FarmerProfileRow
 from app.schemas import FarmerProfile, FarmerProfileCreate
-from app.security import AuthContext, encrypt_phone, new_farmer_token, require_roles
+from app.security import AuthContext, encrypt_email, encrypt_phone, new_farmer_token, require_roles
 from app.security.audit import record_audit
 from app.services.scoring import BOOTSTRAP_EVENT_FLAG, compute_for_profile
 from app.services.workflow import persist_event_with_workflow
@@ -55,6 +55,7 @@ def create_farmer_profile(
         irrigation_type=profile.irrigation_type,
         area_band=profile.area_band,
         phone_enc=encrypt_phone(profile.phone),
+        email_enc=encrypt_email(profile.email),
         consent_flags=flags,
         secondary_crop=profile.secondary_crop,
         schemes_enrolled=profile.schemes_enrolled,

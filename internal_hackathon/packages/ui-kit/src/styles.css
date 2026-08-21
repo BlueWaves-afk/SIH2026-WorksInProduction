@@ -1111,6 +1111,9 @@ h3 { margin-bottom: 6px; font-size: 1rem; }
 .shield-ob-chip.is-selected { border-color: transparent; color: var(--s-ink); background: linear-gradient(#fff, #fff) padding-box, var(--s-rainbow) border-box; }
 
 .shield-ob-optin, .shield-ob-consents { padding: 4px 15px; border: 1px solid var(--s-line); border-radius: var(--s-r-lg); background: #fff; }
+.shield-ob-email-input { width: 100%; min-height: 52px; margin-top: 10px; border: 1px solid var(--s-line); border-radius: var(--s-r-lg); padding: 0 16px; color: var(--s-ink); background: #fff; font-size: .95rem; outline: none; transition: border-color .18s, box-shadow .18s; }
+.shield-ob-email-input:focus { border-color: var(--s-accent, #2f80ed); box-shadow: 0 0 0 4px rgba(47,128,237,.1); }
+.shield-ob-email-input::placeholder { color: var(--s-muted); }
 .shield-ob-required { margin: 0; color: var(--s-orange); font-size: .84rem; font-weight: 550; text-align: center; }
 
 /* privacy priming */

@@ -127,3 +127,69 @@ still describe those dirs as the implementation home. Specs should point to ADR-
 3. **B3** — wire browser microphone capture and TTS playback; server routes and adapters are ready.
 4. ~~**B4**~~ — complete FDI snapshot acceptance test is green; keep the bare-three calibration note explicit.
 5. Gaps 1 (zero tests in 5 packages) and 5 (officer i18n).
+
+---
+
+## 6. Live-loop implementation — 2026-08-21 (the "fully operational" pass)
+
+Built the automatic end-to-end loop over the existing scaffolding. All new code
+is tested and lint-clean; **Python CI suite 90 passed, ruff clean; all frontend
+suites pass; both apps build.**
+
+| # | Required item | Delivered | Files |
+|---|---|---|---|
+| 1 | Scheduled live-ingestion job (30–60 min) | `run_ingestion_cycle` on a 45-min APScheduler job (interval configurable) | `services/ingestion.py`, `outreach/scheduler.py` |
+| 2 | Recalculate all eligible farmers after ingestion | The cycle ingests + rescores the whole storage-consented cohort, failure-isolated per farmer | `services/ingestion.py` |
+| 3 | Trigger outreach from newly changed events | Ingestion writes events via the same workflow the 5-min outreach cycle already consumes → band changes drive outreach automatically | (existing `services/outreach.py`) |
+| 4 | Replace `demoAlerts` with API-backed alerts | `buildAlerts(status)` derives the alerts feed from the real scored `risk_event.contributors` | `features/alerts/fromStatus.ts` (+ test), `app/App.tsx` |
+| 5 | Frontend polling / auto-refresh | 60 s poll while visible + online, plus refresh on regaining focus | `app/App.tsx` |
+| 6 | Sarvam health check + clearer TTS errors | `GET /copilot/speech/health`; 503s now distinguish `not_configured` vs `provider_error` via `x-speech-status` | `api/v1/endpoints/copilot.py` |
+| 7 | Email provider (officer digest) | SMTP + logging-mock provider; identity-light district digest on a daily cron. **Officer channel only** (never farmer email) | `integrations/email.py`, `services/digest.py` |
+| 8 | Dedicated worker instead of in-web scheduler | `python -m app.worker` + `render.yaml` (web + worker); `ENABLE_BACKGROUND_JOBS=false` on web prevents double-runs | `app/worker.py`, `render.yaml`, `app/main.py` |
+
+### Honest operational caveats (config, not code)
+
+1. **Fresh live data needs real adapter credentials.** `fetch_live` deliberately
+   refuses mock-mode adapters ("no fabricated freshness" — masterspec guardrail).
+   With `LIVE_DATA_ENABLED=true` + `ADAPTER_MODE_*=real` + keys, the cycle fetches
+   and persists real observations (`live_fetched` increments). Without them it
+   runs and rescores stored/replay rows — the loop is live, the *data* is not.
+2. **Voice needs `SARVAM_API_KEY`** on the backend; `/copilot/speech/health` now
+   reports this. Auto-speaking every reply stays gated by browser autoplay policy
+   (needs a user gesture) — a browser constraint, not a code gap.
+3. **Digest needs `DISTRICT_DIGEST_RECIPIENTS`** (+ SMTP creds for real send;
+   logs otherwise). No recipients configured = safe no-op.
+
+---
+
+## 7. Farmer email channel — 2026-08-21 (opt-in, additive)
+
+Reversed the earlier officer-only decision on request: farmers can now opt into
+email alerts. Implemented as an **additive, opt-in** channel (never the primary,
+like PWA push) so it respects the "farmers rarely check email" reality without
+denying the option. **Backend 98 pass, ruff clean; both apps build; i18n 108/108/108.**
+
+**Backend**
+- `email_enc` on `farmer_profiles` (Alembic `d4e9a1f7c2b8`), encrypted via the same
+  vault path as the phone — `encrypt_email`/`decrypt_email`.
+- `ConsentFlags.email_alerts` + `email` on profile create (blank→None, format-validated);
+  `ConsentUpdate.email_alerts` toggle.
+- Outreach cycle enqueues an **additive** `email` outbox message when
+  `email_alerts` + an email are present — independently idempotent
+  (`outreach:{event}:email`), rides the same contact decision (not re-capped).
+- Delivery routes `channel == "email"` to the email provider, destination decrypted
+  from `email_enc`, gated by **both** `contact_me` (umbrella) and `email_alerts`;
+  missing address → dead-letter, withdrawn consent → cancelled.
+- 7 new tests (`test_farmer_email.py`): encrypted storage, blank/invalid email,
+  additive creation, opt-out skip, delivery, consent-withdrawal cancel.
+
+**Frontend**
+- `ConsentState.email_alerts`; onboarding privacy step gains an "Email me alerts"
+  toggle + email input (persisted at profile create → `email_enc`); settings screen
+  gains the matching toggle; `email`/`email_alerts` flow through `submitFarmerProfile`.
+- New i18n keys in en/hi/mr (`onboarding.privacy.email[Body]`, `onboarding.email.placeholder`).
+
+**Known limitation:** changing the email address *after* onboarding needs a profile
+update endpoint (not yet built) — the consent PUT toggles the flag but does not edit
+the stored address. Fixture mode stores a non-recoverable hash (no vault key), so real
+email send needs `VAULT_ENCRYPTION_KEY` + `EMAIL_PROVIDER=smtp` in deployment.

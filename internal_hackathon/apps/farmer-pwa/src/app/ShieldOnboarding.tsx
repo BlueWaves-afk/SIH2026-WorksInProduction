@@ -32,6 +32,7 @@ export interface OnboardingResult {
   schemes: string[];
   consent: ConsentState;
   connected: boolean;
+  email?: string;
 }
 
 const LANGUAGES: Array<{ value: Locale; label: string; native: string; glyph: string }> = [
@@ -112,7 +113,8 @@ export function ShieldOnboarding({ locale, onLocale, onComplete, submitting, err
   const [irrigation, setIrrigation] = useState("rainfed");
   const [schemes, setSchemes] = useState<string[]>([]);
   const [connectState, setConnectState] = useState<"idle" | "linking" | "linked" | "manual">("idle");
-  const [consent, setConsent] = useState<ConsentState>({ storage: false, contact: false, analytics: false, due_window: false });
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState<ConsentState>({ storage: false, contact: false, analytics: false, due_window: false, email_alerts: false });
 
   const connected = connectState === "linked";
 
@@ -125,7 +127,8 @@ export function ShieldOnboarding({ locale, onLocale, onComplete, submitting, err
       setConsent((current) => ({
         ...current,
         [key]: value,
-        ...(key === "storage" && !value ? { contact: false, analytics: false, due_window: false } : {}),
+        ...(key === "storage" && !value ? { contact: false, analytics: false, due_window: false, email_alerts: false } : {}),
+        ...(key === "contact" && !value ? { email_alerts: false } : {}),
       }));
   }
 
@@ -156,7 +159,7 @@ export function ShieldOnboarding({ locale, onLocale, onComplete, submitting, err
 
   function next() {
     if (step < 4) { setStep(step + 1); return; }
-    onComplete({ crop, season, irrigation, schemes, consent, connected });
+    onComplete({ crop, season, irrigation, schemes, consent, connected, email: email.trim() || undefined });
   }
 
   return (
@@ -305,8 +308,21 @@ export function ShieldOnboarding({ locale, onLocale, onComplete, submitting, err
             <div className="shield-ob-consents">
               <ConsentToggle label={t("onboarding.privacy.storage")} description={t("onboarding.privacy.storageBody")} value={consent.storage} onChange={updateConsent("storage")} />
               <ConsentToggle label={t("onboarding.privacy.contact")} description={t("onboarding.privacy.contactBody")} value={consent.contact} onChange={updateConsent("contact")} />
+              <ConsentToggle label={t("onboarding.privacy.email")} description={t("onboarding.privacy.emailBody")} value={consent.email_alerts} onChange={updateConsent("email_alerts")} />
               <ConsentToggle label={t("onboarding.privacy.analytics")} description={t("onboarding.privacy.analyticsBody")} value={consent.analytics} onChange={updateConsent("analytics")} />
             </div>
+            {consent.email_alerts && (
+              <input
+                type="email"
+                className="shield-ob-email-input"
+                inputMode="email"
+                autoComplete="email"
+                placeholder={t("onboarding.email.placeholder")}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                aria-label={t("onboarding.privacy.email")}
+              />
+            )}
             {!consent.storage && <p className="shield-ob-required">{t("onboarding.privacy.required")}</p>}
           </>
         )}

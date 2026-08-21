@@ -209,6 +209,7 @@ class ConsentUpdate(BaseModel):
     storage: bool | None = None
     contact: bool | None = None
     whatsapp_call: bool | None = None
+    email_alerts: bool | None = None
     analytics: bool | None = None
     due_window: bool | None = None
     version: str = "1"

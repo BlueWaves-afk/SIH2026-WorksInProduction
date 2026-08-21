@@ -106,7 +106,7 @@ def test_agmarknet_ogd_endpoint_uses_data_gov_query_contract():
     adapter.fetch(request())
     assert seen["params"]["api-key"] == "ogd-key"
     assert seen["params"]["format"] == "json"
-    assert seen["params"]["limit"] == "1000"
+    assert seen["params"]["limit"] == "100"
     assert seen["params"]["filters[commodity]"] == "cotton"
 
 
