@@ -74,11 +74,17 @@ async function resolveFarmerToken(requested?: string): Promise<string> {
 export async function loadFarmerStatus(farmerToken?: string): Promise<FarmerStatus> {
   try {
     const resolvedToken = await resolveFarmerToken(farmerToken);
-    const [eventPage, marketPage] = await Promise.all([
+    const [initialEventPage, marketPage] = await Promise.all([
       request<{ items: RiskEvent[] }>(`/api/v1/risk-events?farmer_token=${encodeURIComponent(resolvedToken)}`),
       request<{ items: MandiQuote[] }>(`/api/v1/mandis/compare?commodity=cotton&farmer_token=${encodeURIComponent(resolvedToken)}`),
     ]);
-    const event = eventPage.items[0];
+    // Profiles created before the status-bootstrap release may have no event
+    // row yet. Ask the authenticated backend to create one from currently
+    // stored observations; this is not a fixture or a client-side score.
+    const event = initialEventPage.items[0] ?? await request<RiskEvent>('/api/v1/risk-events/recalculate', {
+      method: 'POST',
+      body: JSON.stringify({ farmer_token: resolvedToken, source_mode: 'stored' }),
+    });
     if (!event) throw new Error("No risk event");
     const payload: StatusPayload = { risk_event: event, action_card: demoActionCard, mandis: marketPage.items.length ? marketPage.items : demoMode ? demoMandis : [] };
     const entry = writeCachedStatus(payload);

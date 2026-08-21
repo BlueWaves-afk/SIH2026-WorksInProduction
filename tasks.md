@@ -105,6 +105,7 @@
 - [x] Added an API integration test covering profile → replay → Red event → officer case → copilot → resolution and stale-data suppression.
 - [x] Added frontend API-base/environment support and adapted farmer/officer clients to the paginated backend contracts.
 - [x] Bootstrapped a conservative first RiskEvent during farmer profile creation so a new farmer has an honest initial status before live/replay observations arrive; bootstrap placeholders are excluded from scoring hysteresis once real signals exist.
+- [x] Added an authenticated farmer-side recovery recalculation when a legacy profile has no status event, so existing onboarded sessions do not need to repeat setup.
 - [x] Added browser-safe Supabase session/token integration to both apps; only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are accepted client-side.
 - [x] Added farmer phone-OTP and officer email/password session gates, role guards and explicit production connection states.
 - [x] Bound opaque farmer resources to the Supabase Auth subject; possession of a farmer token no longer authorizes access.
