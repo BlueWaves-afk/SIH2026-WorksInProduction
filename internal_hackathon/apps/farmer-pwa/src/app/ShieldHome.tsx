@@ -3,6 +3,7 @@ import {
   Bot,
   CircleAlert,
   Globe,
+  Languages,
   MapPin,
   MessageCircleMore,
   SlidersHorizontal,
@@ -12,13 +13,15 @@ import {
   UserRound,
 } from "lucide-react";
 import type { Band, RiskEvent } from "ui-kit";
-import { useT } from "../i18n";
+import { useT, type Locale } from "../i18n";
 
 type FarmerScreen = "home" | "alerts" | "why" | "action" | "copilot" | "mandi" | "settings" | "more";
 
 interface ShieldHomeProps {
   event: RiskEvent;
   updatedLabel: string;
+  locale: Locale;
+  onLocale: (locale: Locale) => void;
   onOpenWhy: () => void;
   onOpenAction: () => void;
   onOpenCopilot: () => void;
@@ -29,7 +32,7 @@ const BAND_CLASS: Record<Band, string> = { green: "is-steady", amber: "is-watch"
 const FILTERS_ROW_ONE = ["filter.all", "filter.weather", "filter.crop", "filter.market"];
 const FILTERS_ROW_TWO = ["filter.water", "filter.pest", "filter.scheme", "filter.advisory"];
 
-export function ShieldHome({ event, updatedLabel, onOpenWhy, onOpenAction, onOpenCopilot, onOpenMandi }: ShieldHomeProps) {
+export function ShieldHome({ event, updatedLabel, locale, onLocale, onOpenWhy, onOpenAction, onOpenCopilot, onOpenMandi }: ShieldHomeProps) {
   const t = useT();
   const [category, setCategory] = useState("filter.all");
 
@@ -43,10 +46,20 @@ export function ShieldHome({ event, updatedLabel, onOpenWhy, onOpenAction, onOpe
             <small>{t("app.tagline")}</small>
           </span>
         </div>
-        <button className="shield-profile" aria-label="Open farmer profile">
-          <UserRound size={21} strokeWidth={1.8} />
-          <span className="shield-profile-dot" />
-        </button>
+        <div className="shield-header-actions">
+          <label className="shield-header-language">
+            <Languages size={16} strokeWidth={2} aria-hidden="true" />
+            <select aria-label={t("language.select")} value={locale} onChange={(event) => onLocale(event.target.value as Locale)}>
+              <option value="mr">मराठी</option>
+              <option value="hi">हिंदी</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <button className="shield-profile" aria-label="Open farmer profile">
+            <UserRound size={21} strokeWidth={1.8} />
+            <span className="shield-profile-dot" />
+          </button>
+        </div>
       </header>
 
       <section className="shield-intro">

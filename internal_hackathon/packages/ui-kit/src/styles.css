@@ -392,6 +392,16 @@ h3 { margin-bottom: 6px; font-size: 1rem; }
 .shield-inner-mark-logo { display: block; width: 22px; height: 22px; background: url('./assets/kisansetu-mark.webp') center/contain no-repeat; }
 .shield-wordmark strong { display: block; color: var(--s-ink); font-size: 1.02rem; font-weight: 800; letter-spacing: -.02em; }
 .shield-wordmark small { display: flex; align-items: center; gap: 5px; margin-top: 0; color: var(--s-muted); font-size: .76rem; font-weight: 500; }
+.shield-header-actions { display: flex; align-items: center; gap: 8px; }
+.shield-header-language {
+  display: flex; align-items: center; gap: 4px; min-height: 36px; max-width: 112px;
+  border: 1px solid var(--s-line); border-radius: var(--s-pill); padding: 3px 8px;
+  color: var(--s-blue); background: rgba(255,255,255,.82); box-shadow: var(--s-sh-1);
+}
+.shield-header-language select {
+  min-width: 0; border: 0; padding: 3px 0; color: var(--s-ink-2); background: transparent;
+  font-size: .72rem; font-weight: 700; outline: none; cursor: pointer;
+}
 .shield-profile {
   position: relative; display: grid; place-items: center; width: 44px; height: 44px;
   border: 2px solid transparent; border-radius: 50%; color: #6a5a44;

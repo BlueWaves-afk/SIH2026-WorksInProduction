@@ -70,7 +70,10 @@ function starterMessages(locale: Locale): CopilotMessage[] {
 }
 
 export function App() {
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    const saved = window.localStorage.getItem("kisansetu.locale");
+    return saved === "hi" || saved === "mr" || saved === "en" ? saved : "en";
+  });
   const [screen, setScreen] = useState<Screen>("home");
   const [onboarded, setOnboarded] = useState(() => window.localStorage.getItem("farmer-onboarded") === "true");
   const [consent, setConsent] = useState<ConsentState>(initialConsent);
@@ -94,6 +97,11 @@ export function App() {
   const voiceMountedRef = useRef(true);
   const t = copy[locale];
   const tr = translate(locale as I18nLocale);
+
+  function setLocale(next: Locale) {
+    setLocaleState(next);
+    window.localStorage.setItem("kisansetu.locale", next);
+  }
 
   useEffect(() => {
     const onOnline = () => setOnline(true);
@@ -343,7 +351,7 @@ export function App() {
     <LocaleProvider locale={locale}>
     <main className="app-shell farmer-shell shield-farmer-shell"><div className="app-container">
       <div key={screen} className={`shield-view is-${direction}`}>
-      {screen === "home" && <ShieldHome event={status.risk_event} updatedLabel={statusLabel} onOpenWhy={() => navigate("why")} onOpenAction={() => navigate("action")} onOpenCopilot={() => navigate("copilot")} onOpenMandi={() => navigate("mandi")} />}
+      {screen === "home" && <ShieldHome event={status.risk_event} updatedLabel={statusLabel} locale={locale} onLocale={setLocale} onOpenWhy={() => navigate("why")} onOpenAction={() => navigate("action")} onOpenCopilot={() => navigate("copilot")} onOpenMandi={() => navigate("mandi")} />}
       {screen === "alerts" && <ShieldAlertsScreen alerts={buildAlerts(status)} onOpenAlert={() => navigate("why")} />}
       {screen === "why" && <ShieldStatusScreen event={status.risk_event} onBack={() => navigate("alerts")} onAsk={() => navigate("copilot")} />}
       {screen === "action" && <ShieldActionScreen card={actionCard} onBack={() => navigate("why")} onAsk={() => navigate("copilot")} />}
