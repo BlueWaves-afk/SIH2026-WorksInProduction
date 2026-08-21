@@ -29,6 +29,76 @@ button { cursor: pointer; }
 .auth-card { width: min(100%, 430px); border: 1px solid #e5e8ec; border-radius: 28px; padding: clamp(28px, 7vw, 44px); background: rgba(255,255,255,.94); box-shadow: 0 24px 80px rgba(31,45,61,.1); }
 .auth-page.is-officer .auth-card { width: min(100%, 480px); }
 .auth-brand-logo { display: block; width: 64px; height: 64px; margin-bottom: 24px; border: 1px solid transparent; border-radius: 20px; background: url('./assets/kisansetu-mark.webp') center/contain no-repeat, linear-gradient(#fff,#fff) padding-box, linear-gradient(130deg,#2f80ed,#ff6b45,#f2c94c,#219653) border-box; background-origin: border-box; box-shadow: 0 8px 22px rgba(31,45,61,.1); }
+.farmer-loading-card { text-align: center; }
+.farmer-loading-mark {
+  position: relative;
+  display: grid;
+  width: 116px;
+  height: 116px;
+  place-items: center;
+  margin: 0 auto 26px;
+  isolation: isolate;
+}
+.farmer-loading-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: 34px;
+  background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #276be8, #32c8d0 28%, #f6d23f 54%, #ff6844 76%, #53bb67) border-box;
+  background-size: 100% 100%, 220% 220%;
+  animation: farmer-loading-ring 2.8s ease-in-out infinite;
+  box-shadow: 0 12px 30px rgba(47,128,237,.12), 0 0 0 8px rgba(255,255,255,.72);
+  z-index: -1;
+}
+.farmer-loading-mark::after {
+  content: "";
+  position: absolute;
+  top: 13px;
+  bottom: 13px;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(#276be8, #32c8d0 28%, #f6d23f 54%, #ff6844 76%, #53bb67);
+  filter: blur(.1px) drop-shadow(0 0 7px rgba(47,128,237,.32));
+  animation: farmer-loading-sweep 2.8s cubic-bezier(.55,.05,.35,1) infinite;
+}
+.farmer-loading-logo {
+  position: absolute;
+  width: 88px;
+  height: 88px;
+  background: url('./assets/kisansetu-mark.webp') center/contain no-repeat;
+}
+.farmer-loading-logo.is-base { opacity: .13; filter: saturate(.8); }
+.farmer-loading-logo.is-trace {
+  opacity: 1;
+  clip-path: inset(0 100% 0 0);
+  filter: drop-shadow(0 5px 8px rgba(47,128,237,.18));
+  animation: farmer-loading-trace 2.8s cubic-bezier(.45,.05,.35,1) infinite;
+}
+.farmer-loading-card.is-error .farmer-loading-mark::before,
+.farmer-loading-card.is-error .farmer-loading-mark::after,
+.farmer-loading-card.is-error .farmer-loading-logo.is-trace { animation-play-state: paused; }
+.farmer-loading-card.is-error .farmer-loading-logo.is-trace { clip-path: inset(0 0 0 0); }
+@keyframes farmer-loading-ring {
+  0%, 100% { background-position: 0 0, 0% 50%; transform: rotate(0deg); }
+  50% { background-position: 0 0, 100% 50%; transform: rotate(2deg); }
+}
+@keyframes farmer-loading-trace {
+  0% { clip-path: inset(0 100% 0 0); opacity: .2; }
+  12% { opacity: 1; }
+  62%, 78% { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0); opacity: .2; }
+}
+@keyframes farmer-loading-sweep {
+  0% { transform: translateX(-8px); opacity: 0; }
+  12%, 70% { opacity: 1; }
+  86%, 100% { transform: translateX(124px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .farmer-loading-mark::before, .farmer-loading-mark::after, .farmer-loading-logo.is-trace { animation: none; }
+  .farmer-loading-logo.is-trace { clip-path: inset(0 0 0 0); }
+}
 .auth-role-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 22px 0 24px; }
 .auth-role-panel { display: flex; min-height: 112px; flex-direction: column; align-items: flex-start; gap: 5px; border: 1px solid #e1e6eb; border-radius: 18px; padding: 14px; color: #596575; text-align: left; background: #f8fafc; transition: border-color .18s, box-shadow .18s, transform .18s, background .18s; }
 .auth-role-panel:hover { transform: translateY(-1px); border-color: #a8c5f2; }

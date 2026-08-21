@@ -312,7 +312,15 @@ export function App() {
   }
 
   if (!status) {
-    return <main className="auth-page"><section className="auth-card"><p className="auth-kicker">FARMER SUPPORT</p><h1>{dataError ? "We could not load your status." : "Loading your latest status…"}</h1>{dataError && <><p>{dataError}</p><button className="auth-submit" onClick={() => void refreshStatus()}>Try again</button></>}</section></main>;
+    return <main className="auth-page farmer-status-loading"><section className={`auth-card farmer-loading-card${dataError ? " is-error" : ""}`}>
+      <div className="farmer-loading-mark" role="img" aria-label="KisanSetu">
+        <span className="farmer-loading-logo is-base" aria-hidden="true" />
+        <span className="farmer-loading-logo is-trace" aria-hidden="true" />
+      </div>
+      <p className="auth-kicker">FARMER SUPPORT</p>
+      <h1>{dataError ? "We could not load your status." : "Loading your latest status…"}</h1>
+      {dataError && <><p>{dataError}</p><button className="auth-submit" onClick={() => void refreshStatus()}>Try again</button></>}
+    </section></main>;
   }
 
   return (

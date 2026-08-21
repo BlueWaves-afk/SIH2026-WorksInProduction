@@ -130,6 +130,7 @@
 - [x] Added scheduled retention cleanup for old observations and completed outbox messages while retaining audit history.
 - [x] Made both backend container entrypoints apply Alembic migrations before Uvicorn starts, preventing Render from serving models ahead of Supabase.
 - [x] Made repeated farmer onboarding idempotent: an authenticated farmer reuses the existing profile/token instead of receiving a duplicate-profile conflict, with frontend recovery for older backend deployments.
+- [x] Added a mobile-friendly KisanSetu loading animation that traces the rainbow logo with a moving sweep and graceful reduced-motion fallback.
 - [x] Added mobile-farmer and desktop-officer Playwright journeys and wired them into CI.
 - [x] Upgraded Vite, Vitest and Playwright to audited versions and deduplicated the JavaScript dependency tree.
 
