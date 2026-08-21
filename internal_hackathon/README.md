@@ -23,6 +23,12 @@ Start with [`design/masterspecv1.md`](design/masterspecv1.md), then
 Deployment variables and the Supabase/Vercel/Render handoff are recorded in
 [`design/deployment_configuration.md`](design/deployment_configuration.md).
 
+The Vercel portal is a single role-aware deployment: a farmer session renders
+the farmer PWA, while a Supabase user with `extension_officer`,
+`district_admin`, `admin`, or `auditor` in `app_metadata.role` renders the
+officer workspace in the same build. No `VITE_OFFICER_APP_URL` or second
+frontend deployment is required.
+
 ## Module map
 
 | # | Module | Location | Spec |

@@ -279,7 +279,13 @@ flowchart LR
 
 ### Hosting (prototype)
 
-Live preview: [KisanSetu farmer PWA](https://sih-2026-works-in-production.vercel.app/)
+Live preview: [KisanSetu portal](https://sih-2026-works-in-production.vercel.app/)
+
+The portal is deployed once on Vercel and selects the experience from the
+authenticated Supabase role: farmer accounts open the farmer PWA; officer
+roles (`extension_officer`, `district_admin`, `admin`, `auditor`) open the
+officer triage workspace. The officer workspace is bundled into the farmer
+portal build, so there is no separate frontend URL to configure.
 
 ```
 Frontend:  https://sih-2026-works-in-production.vercel.app     (Vercel, static PWA)

@@ -1,6 +1,8 @@
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowRight, BriefcaseBusiness, LockKeyhole, Mail, Phone } from "lucide-react";
+import { App as OfficerDashboard } from "../../../officer-dashboard/src/app/App";
 import { authRequired, currentSession, observeSession, resendSignupConfirmation, sendPhoneOtp, signInWithEmail, signOut, signUpWithEmail, supabase, verifyPhoneOtp } from "./supabase";
 
 const OFFICER_ROLES = new Set(["extension_officer", "district_admin", "admin", "auditor"]);
@@ -19,6 +21,7 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
   const [portal, setPortal] = useState<"farmer" | "officer">("farmer");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!authRequired) return;
@@ -40,7 +43,12 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
 
   if (!authRequired) return children;
   if (loading) return <AuthFrame><p className="auth-kicker">SECURE FARMER ACCESS</p><h1>Restoring your private session…</h1></AuthFrame>;
-  if (session) return children;
+  if (session) {
+    // Only app_metadata is trusted for elevation; user_metadata is editable by
+    // the end user and must never grant officer access.
+    const role = String(session.user.app_metadata?.role ?? "").toLowerCase();
+    return OFFICER_ROLES.has(role) ? <OfficerDashboard /> : children;
+  }
   if (!supabase) return <AuthFrame><p className="auth-kicker">SETUP REQUIRED</p><h1>Farmer sign-in is not configured.</h1><p>Add the public Supabase URL and anonymous key to the Vercel environment.</p></AuthFrame>;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -79,19 +87,20 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
       <div className="auth-brand-logo" aria-label="KisanSetu" role="img" />
       <p className="auth-kicker">PRIVATE · CONSENT-BASED</p>
       <div className="auth-role-panels" role="tablist" aria-label="KisanSetu access type">
-        <button type="button" className={`auth-role-panel ${portal === "farmer" ? "is-active" : ""}`} onClick={() => { setPortal("farmer"); setError(null); }}>
+        <button type="button" role="tab" aria-selected={portal === "farmer"} className={`auth-role-panel ${portal === "farmer" ? "is-active" : ""}`} onClick={() => { setPortal("farmer"); setError(null); }}>
           <span className="auth-role-logo" aria-hidden="true" />
           <strong>Farmer access</strong>
           <small>Phone OTP or email</small>
         </button>
-        <button type="button" className={`auth-role-panel ${portal === "officer" ? "is-active" : ""}`} onClick={() => { setPortal("officer"); setError(null); }}>
+        <button type="button" role="tab" aria-selected={portal === "officer"} className={`auth-role-panel ${portal === "officer" ? "is-active" : ""}`} onClick={() => { setPortal("officer"); setError(null); }}>
           <span className="auth-role-icon" aria-hidden="true"><BriefcaseBusiness size={20} /></span>
           <strong>Officer access</strong>
           <small>Work email and password</small>
         </button>
       </div>
-      {portal === "officer" ? <OfficerAccessPanel /> : (
-        <>
+      <AnimatePresence mode="wait" initial={false}>
+        {portal === "officer" ? <motion.div key="officer" {...(reduceMotion ? reducedPanelMotion : panelMotion)}><OfficerAccessPanel /></motion.div> : (
+        <motion.div key="farmer" {...(reduceMotion ? reducedPanelMotion : panelMotion)}>
           <h1>{method === "email" ? (emailMode === "signup" ? "Create your farmer account" : "Open your KisanSetu support") : stage === "phone" ? "Open your KisanSetu support" : "Enter the 6-digit code"}</h1>
           <p>{emailConfirmation ? "Check your email to confirm your account, then return here to sign in." : method === "email" ? "Email works as a demo fallback while phone OTP is being connected." : stage === "phone" ? "Use the mobile number registered for your support profile." : `We sent a one-time code to ${phone}.`}</p>
           <div className="auth-methods" role="tablist" aria-label="Sign-in method">
@@ -115,8 +124,9 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
             {method === "phone" && stage === "otp" && <button type="button" className="auth-link" onClick={() => { setStage("phone"); setOtp(""); setError(null); }}>Use a different number</button>}
           </form>
           <small className="auth-footnote">Your mobile number authenticates your session. Your opaque farmer token is never used as a password.</small>
-        </>
+        </motion.div>
       )}
+      </AnimatePresence>
     </AuthFrame>
   );
 }
@@ -138,12 +148,8 @@ function OfficerAccessPanel() {
         await signOut();
         throw new Error("This account has not been assigned an officer role.");
       }
-      const destination = (import.meta.env.VITE_OFFICER_APP_URL as string | undefined)?.trim();
-      if (!destination) {
-        await signOut();
-        throw new Error("Officer access is verified. Configure VITE_OFFICER_APP_URL to open the officer workspace.");
-      }
-      window.location.assign(destination);
+      // The officer workspace is part of this same Vercel build. The role-aware
+      // session branch above renders it without a second deployment or redirect.
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Officer sign-in failed. Please try again.");
     } finally {
@@ -167,5 +173,20 @@ function OfficerAccessPanel() {
 }
 
 function AuthFrame({ children }: { children: ReactNode }) {
-  return <main className="auth-page"><section className="auth-card">{children}</section></main>;
+  const reduceMotion = useReducedMotion();
+  return <main className="auth-page"><motion.section className="auth-card" initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: reduceMotion ? 0 : 0.42, ease: [0.22, 0.9, 0.28, 1] }}>{children}</motion.section></main>;
 }
+
+const panelMotion = {
+  initial: { opacity: 0, x: 14 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -10 },
+  transition: { duration: 0.24, ease: "easeOut" as const },
+};
+
+const reducedPanelMotion = {
+  initial: false,
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 1, x: 0 },
+  transition: { duration: 0 },
+};

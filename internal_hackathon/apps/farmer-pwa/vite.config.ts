@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { resolve } from "node:path";
 
 export default defineConfig({
   plugins: [
@@ -57,5 +58,7 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
-  server: { proxy: { "/api": "http://localhost:8000" } },
+  // The unified portal renders the officer workspace from the sibling app
+  // inside this same build. Allow Vite to serve that shared source in local dev.
+  server: { fs: { allow: [resolve("../..")] }, proxy: { "/api": "http://localhost:8000" } },
 });
