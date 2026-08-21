@@ -39,6 +39,14 @@
 - [x] Added Sarvam provider transport tests and an API integration test covering grounded citations and template fallback.
 - [x] Added M7 tests for draft-only behavior, consent gating, expiry rejection, PII redaction and prompt-injection sanitisation.
 
+### Farmer copilot voice — verified
+
+- [x] Added browser microphone capture with MediaRecorder, WebM/MP4/OGG selection and explicit permission/unsupported-device fallbacks.
+- [x] Added short-clip validation, server-side Sarvam STT upload with locale mapping and transcript review before a farmer sends the question.
+- [x] Added Sarvam TTS playback for the latest copilot answer with stop controls, object-URL cleanup and truthful playback errors.
+- [x] Updated the backend speech contract to preserve browser audio MIME types and reject unsupported containers before provider dispatch.
+- [x] Added browser interaction coverage for denied microphone access plus mocked end-to-end capture, STT request, TTS request and audio playback.
+
 ### Mobile-first interface refresh — verified
 
 - [x] Reworked the farmer home screen into a compact status-first mobile layout with a fixed bottom navigation bar.
@@ -123,6 +131,7 @@
 - `npm run test` — farmer PWA, officer dashboard and UI kit test suites passed.
 - `npm run build` — farmer PWA and officer dashboard production builds passed.
 - `npm run test:e2e` — mobile farmer and desktop officer browser journeys passed.
+- Voice interaction journey — microphone fallback, mocked MediaRecorder upload and mocked Sarvam WAV playback passed on the Pixel 7 profile.
 - `npm audit` — zero production or development dependency vulnerabilities.
 - Live adapter tests — IMD/AGMARKNET provider parsing and live-score persistence path passed with HTTP mock transports; no provider credentials were used.
 - Sarvam provider tests — OpenAI-compatible chat transport/header parsing and missing-key safety boundary passed with HTTP mock transport; no Sarvam credential was used.

@@ -189,7 +189,7 @@ it is additive and never referenced by M4/M5/M6.
 | `/api/v1/copilot/brief` | `POST { case_id }` | officer role, MFA per M2 RBAC | Generate/refresh a `CopilotBrief` for a case. |
 | `/api/v1/copilot/explain` | `GET ?event_id=&locale=` | any authenticated app (farmer app, officer dashboard) | Driver → natural-language sentence(s) for the "why" screen (no draft message, no scheme RAG). |
 | `/api/v1/copilot/chat` | `POST { farmer_token, message, locale, history[] }` | farmer ownership or officer role, storage consent | Bounded question answering grounded in the active deterministic event; no outbound action. |
-| `/api/v1/copilot/speech/transcribe` | `POST { farmer_token, audio_base64, language_code? }` | farmer ownership or officer role, storage consent | Short Sarvam STT turn; audio is not persisted. |
+| `/api/v1/copilot/speech/transcribe` | `POST { farmer_token, audio_base64, audio_mime_type?, language_code? }` | farmer ownership or officer role, storage consent | Short Sarvam STT turn; browser WebM/MP4/OGG/WAV containers are validated and audio is not persisted. |
 | `/api/v1/copilot/speech/synthesize` | `POST { farmer_token, text, language_code }` | farmer ownership or officer role, storage consent | Sarvam TTS bytes for a grounded response; no provider key in the client. |
 | `/api/v1/copilot/voice-session` | `POST { farmer_token, locale }` *(stretch)* | farmer session token (M2) | Opens a narration session; media I/O handled by M3, this module only supplies script segments. |
 

@@ -44,11 +44,13 @@ def test_sarvam_speech_provider_transcribes_and_synthesizes_without_logging_key(
 
     audio = base64.b64encode(b"wav-bytes").decode()
     paths: list[str] = []
+    stt_bodies: list[bytes] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         paths.append(request.url.path)
         assert request.headers.get("api-subscription-key") == "test-secret"
         if request.url.path.endswith("speech-to-text"):
+            stt_bodies.append(request.read())
             return httpx.Response(200, json={"transcript": "पानी कब दें?", "language_code": "hi-IN"})
         body = request.read().decode()
         assert '"language_code":"hi-IN"' in body
@@ -59,8 +61,10 @@ def test_sarvam_speech_provider_transcribes_and_synthesizes_without_logging_key(
         api_key="test-secret",
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
-    transcript = provider.transcribe(b"audio", language_code="hi-IN")
+    transcript = provider.transcribe(b"audio", language_code="hi-IN", mime_type="audio/webm;codecs=opus")
     synthesized = provider.synthesize("नमस्ते", language_code="hi-IN")
     assert transcript.text == "पानी कब दें?"
     assert synthesized == b"wav-bytes"
     assert paths == ["/speech-to-text", "/text-to-speech"]
+    assert b'filename="farmer-audio.webm"' in stt_bodies[0]
+    assert b"Content-Type: audio/webm;codecs=opus" in stt_bodies[0]

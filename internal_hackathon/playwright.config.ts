@@ -3,7 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 const demoEnvironment = {
   VITE_AUTH_REQUIRED: "false",
   VITE_DEMO_MODE: "true",
-  VITE_API_BASE_URL: "http://127.0.0.1:9/api/v1",
+  // The client appends `/api/v1` to this origin. Keep the test endpoint
+  // unreachable so demo fixtures are exercised without unsafe-port errors.
+  VITE_API_BASE_URL: "http://127.0.0.1:9",
   VITE_MAP_STYLE_URL: "https://tiles.openfreemap.org/styles/liberty",
 };
 

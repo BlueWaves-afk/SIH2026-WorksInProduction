@@ -182,6 +182,7 @@ class CopilotConversationResponse(BaseModel):
 class CopilotSpeechTranscribeRequest(BaseModel):
     farmer_token: str = Field(min_length=1, max_length=160)
     audio_base64: str = Field(min_length=4, max_length=8_000_000)
+    audio_mime_type: str = Field(default="audio/wav", max_length=64)
     language_code: str | None = Field(default=None, min_length=2, max_length=12)
 
 

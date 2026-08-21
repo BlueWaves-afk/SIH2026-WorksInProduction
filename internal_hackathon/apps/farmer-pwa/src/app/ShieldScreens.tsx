@@ -25,11 +25,13 @@ import {
   SendHorizontal,
   ShieldCheck,
   Sprout,
+  Square,
   Share2,
   Store,
   ThumbsUp,
   UserRound,
   Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { useT } from "../i18n";
@@ -266,10 +268,14 @@ function useElapsed() {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function ShieldCopilotScreen({ messages, thinking = false, input, placeholder, sendLabel, onInput, onReply, onBack }: { messages: CopilotMessage[]; thinking?: boolean; input: string; placeholder: string; sendLabel: string; onInput: (value: string) => void; onReply: (value: string) => void; onBack: () => void }) {
+export type VoiceState = "idle" | "recording" | "transcribing" | "synthesizing" | "playing";
+
+export function ShieldCopilotScreen({ messages, thinking = false, input, placeholder, sendLabel, onInput, onReply, onBack, voiceState = "idle", voiceError, voiceStatus, onToggleRecording, onPlayAnswer }: { messages: CopilotMessage[]; thinking?: boolean; input: string; placeholder: string; sendLabel: string; onInput: (value: string) => void; onReply: (value: string) => void; onBack: () => void; voiceState?: VoiceState; voiceError?: string | null; voiceStatus?: string | null; onToggleRecording?: () => void; onPlayAnswer?: () => void }) {
   const t = useT();
   const elapsed = useElapsed();
   const lastAssistant = [...messages].reverse().find((message) => message.role === "assistant");
+  const recording = voiceState === "recording";
+  const voiceBusy = voiceState === "transcribing" || voiceState === "synthesizing";
 
   return (
     <div className="shield-screen shield-agent-screen">
@@ -313,6 +319,8 @@ export function ShieldCopilotScreen({ messages, thinking = false, input, placeho
         <div className="shield-agent-transcript" aria-live="polite">
           {lastAssistant && !thinking && <p>{lastAssistant.text}</p>}
           {thinking && <p className="is-muted">{t("copilot.thinking")}</p>}
+          {voiceStatus && <p className="is-voice-status">{voiceStatus}</p>}
+          {voiceError && <p className="is-voice-error" role="alert">{voiceError}</p>}
         </div>
 
         <div className="shield-quick-prompts">
@@ -328,9 +336,14 @@ export function ShieldCopilotScreen({ messages, thinking = false, input, placeho
       </section>
 
       <div className="shield-chat-composer">
-        <button className="shield-composer-speak" aria-label="Play the answer aloud"><Volume2 size={19} strokeWidth={2} /></button>
+        <button className="shield-composer-speak" aria-label={voiceState === "playing" ? "Stop playback" : "Play the answer aloud"} disabled={!lastAssistant || voiceBusy} onClick={onPlayAnswer}>
+          {voiceState === "playing" ? <VolumeX size={19} strokeWidth={2} /> : <Volume2 size={19} strokeWidth={2} />}
+        </button>
         <label className="shield-composer-field">
           <input value={input} onChange={(event) => onInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onReply(input); }} placeholder={placeholder} aria-label={placeholder} />
+          <button className={`shield-composer-mic${recording ? " is-recording" : ""}`} aria-label={recording ? "Stop recording" : "Record a voice question"} disabled={voiceBusy || thinking} onClick={onToggleRecording}>
+            {recording ? <Square size={15} strokeWidth={2.4} fill="currentColor" /> : <Mic size={17} strokeWidth={2.2} />}
+          </button>
           <button aria-label={sendLabel} disabled={!input.trim()} onClick={() => onReply(input)}><AudioLines size={18} strokeWidth={2.2} /></button>
         </label>
         <button className="shield-composer-close" aria-label="Close copilot" onClick={onBack}><X size={20} strokeWidth={2.2} /></button>

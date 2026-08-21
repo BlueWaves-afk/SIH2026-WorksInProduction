@@ -77,7 +77,7 @@ class SarvamSpeechProvider:
             raise SarvamSpeechProviderError("Sarvam speech provider is not configured")
         return {"api-subscription-key": self.api_key or "", "accept": "application/json"}
 
-    def transcribe(self, audio: bytes, *, language_code: str | None = None) -> SarvamTranscription:
+    def transcribe(self, audio: bytes, *, language_code: str | None = None, mime_type: str = "audio/wav") -> SarvamTranscription:
         if not audio:
             raise SarvamSpeechProviderError("audio payload is empty")
         client = self._client or httpx.Client(timeout=self.timeout_seconds)
@@ -86,11 +86,19 @@ class SarvamSpeechProvider:
             data = {"model": self.stt_model, "mode": "transcribe"}
             if language_code:
                 data["language_code"] = language_code
+            extension = {
+                "audio/wav": "wav",
+                "audio/x-wav": "wav",
+                "audio/webm": "webm",
+                "audio/ogg": "ogg",
+                "audio/mp4": "mp4",
+                "audio/mpeg": "mp3",
+            }.get(mime_type.split(";", 1)[0].lower(), "wav")
             response = client.post(
                 self.stt_endpoint,
                 headers=self._headers(),
                 data=data,
-                files={"file": ("farmer-audio.wav", audio, "audio/wav")},
+                files={"file": (f"farmer-audio.{extension}", audio, mime_type)},
             )
             response.raise_for_status()
             payload = response.json()

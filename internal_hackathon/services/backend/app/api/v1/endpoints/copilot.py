@@ -181,9 +181,10 @@ def copilot_speech_transcribe(
 
     _speech_profile(payload.farmer_token, db, actor)
     audio = _decode_audio(payload.audio_base64)
+    mime_type = _audio_mime_type(payload.audio_mime_type)
     provider = build_sarvam_speech_provider(settings)
     try:
-        result = provider.transcribe(audio, language_code=payload.language_code)
+        result = provider.transcribe(audio, language_code=payload.language_code, mime_type=mime_type)
     except SarvamSpeechProviderError as exc:
         raise HTTPException(status_code=503, detail="Speech transcription is temporarily unavailable") from exc
     record_audit(
@@ -235,3 +236,13 @@ def _decode_audio(value: str) -> bytes:
     if not audio or len(audio) > 6_000_000:
         raise HTTPException(status_code=422, detail="audio payload must be between 1 byte and 6 MB")
     return audio
+
+
+def _audio_mime_type(value: str) -> str:
+    """Allow only browser audio containers accepted by the speech provider."""
+
+    normalized = value.split(";", 1)[0].strip().lower()
+    allowed = {"audio/wav", "audio/x-wav", "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=422, detail="audio_mime_type is unsupported")
+    return normalized

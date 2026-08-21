@@ -833,6 +833,8 @@ h3 { margin-bottom: 6px; font-size: 1rem; }
 .shield-agent-transcript { min-height: 44px; }
 .shield-agent-transcript p { margin: 0; color: var(--s-ink-2); font-size: .94rem; line-height: 1.55; text-align: center; }
 .shield-agent-transcript p.is-muted { color: var(--s-muted); font-style: italic; }
+.shield-agent-transcript p.is-voice-status { margin-top: 8px; color: var(--s-blue); font-size: .78rem; }
+.shield-agent-transcript p.is-voice-error { margin-top: 8px; color: #b42318; font-size: .78rem; }
 
 /* urgent row */
 .shield-agent-emergency { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -871,6 +873,10 @@ h3 { margin-bottom: 6px; font-size: 1rem; }
 .shield-composer-field input::placeholder { color: var(--s-muted); }
 .shield-composer-field > button { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border: 0; border-radius: 50%; color: var(--s-blue); background: rgba(47,128,237,.1); }
 .shield-composer-field > button:disabled { opacity: .45; }
+.shield-composer-field > button.shield-composer-mic { color: var(--s-ink-2); background: rgba(17,24,39,.06); }
+.shield-composer-field > button.shield-composer-mic.is-recording { color: #fff; background: #d92d20; box-shadow: 0 0 0 5px rgba(217,45,32,.14); animation: s-pulse 1.35s ease-in-out infinite; }
+.shield-composer-speak:disabled { opacity: .45; cursor: not-allowed; }
+@keyframes s-pulse { 50% { transform: scale(1.06); } }
 
 /* --------------------------------------------------------------- PRIVACY -- */
 .shield-privacy-hero {
