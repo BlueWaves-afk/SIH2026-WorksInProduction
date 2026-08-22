@@ -1,13 +1,11 @@
 {
   "app.name": "KISANSETU",
   "app.tagline": "Support Nationwide",
-
   "nav.home": "Home",
   "nav.status": "Status",
   "nav.ask": "Ask",
   "nav.more": "More",
   "language.select": "App language",
-
   "home.headline": "What's Happening Nearby,",
   "home.headline.accent": "Get Crop Support Early",
   "home.live.title": "Cotton Support Alert-",
@@ -19,11 +17,9 @@
   "home.plan.sub": "3 safe, reviewed steps",
   "home.updated": "Updated just now",
   "home.offline": "Last saved status",
-
   "band.green": "Looking steady",
   "band.amber": "Keep watch",
   "band.red": "Support needed",
-
   "filter.all": "All Alerts",
   "filter.weather": "Weather",
   "filter.crop": "Crop Health",
@@ -32,14 +28,12 @@
   "filter.pest": "Pest Alert",
   "filter.scheme": "Scheme",
   "filter.advisory": "Advisory",
-
   "alerts.headline": "Discover What's Happening in Your Area —",
   "alerts.headline.accent": "Live Alerts, Field Reports, and Support Updates",
   "alerts.kind.crop": "Crop health",
   "alerts.kind.rain": "Weather",
   "alerts.kind.market": "Market",
   "alerts.kind.pest": "Pest",
-
   "timeline.back": "Back",
   "timeline.heading": "Timeline Updates",
   "timeline.summary": "Support was raised for your cotton plot in {village}. An agriculture officer has been notified and your case is being tracked to closure.",
@@ -47,7 +41,6 @@
   "timeline.farmer": "You reported low water availability in the cotton plot.",
   "timeline.safety.title": "Support signal only",
   "timeline.chat": "Chat with your copilot",
-
   "copilot.search": "Search this area",
   "copilot.heading": "Support Copilot",
   "copilot.sub": "Get a simple explanation of your status or find the next safe step for your field.",
@@ -62,7 +55,6 @@
   "copilot.urgent": "Is this urgent?",
   "copilot.callOfficer": "Call officer",
   "copilot.placeholder": "Ask a question…",
-
   "onboarding.step": "{current}/{total}",
   "onboarding.continue": "Continue",
   "onboarding.finish": "Finish setup",
@@ -105,7 +97,6 @@
   "onboarding.privacy.analytics": "Include me in anonymous trends",
   "onboarding.privacy.analyticsBody": "Only village-level group results are used.",
   "onboarding.privacy.required": "Saving your information is required to show a status.",
-
   "crop.cotton": "Cotton",
   "crop.soybean": "Soybean",
   "crop.groundnut": "Groundnut",
@@ -116,5 +107,22 @@
   "irrigation.rainfed": "Rain-fed",
   "irrigation.partial": "Partial",
   "irrigation.assured": "Assured",
-  "scheme.none": "None yet"
+  "scheme.none": "None yet",
+  "menu.markets": "Nearby markets",
+  "menu.markets.sub": "Compare before selling",
+  "menu.markets.sub2": "Compare today’s options",
+  "menu.copilot": "Support copilot",
+  "menu.copilot.sub": "Ask about your status",
+  "menu.privacy": "Privacy & consent",
+  "menu.privacy.sub": "Control how information is used",
+  "menu.privacy.subtitle": "Your choices stay editable",
+  "profile.title": "Your support space",
+  "profile.score": "Support score",
+  "profile.confidence": "Confidence",
+  "markets.priceOptions": "PRICE OPTIONS",
+  "markets.nearYou": "Markets near you",
+  "markets.compare": "Compare, then confirm",
+  "markets.compareSub": "Your FPO or officer confirms availability and grade before you travel.",
+  "support.network": "KisanSetu support network",
+  "support.networkSub": "Your score is for support prioritisation, never for credit or insurance decisions."
 }

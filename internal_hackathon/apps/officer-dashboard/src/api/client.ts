@@ -30,7 +30,13 @@ export async function loadOfficerQueue(): Promise<OfficerQueue> {
       request<{ items: AlertCase[] }>("/api/v1/cases?limit=100"),
       request<{ hotspots: DistrictHotspot[] }>("/api/v1/analytics/district"),
     ]);
-    return { cases: cases.items, events: events.items, hotspots: analytics.hotspots, source: "api", cached_at: new Date().toISOString() };
+    
+    // If we have actual cases, use them. Otherwise, if in demo mode, use the fake data.
+    if (cases.items.length > 0 || !demoMode) {
+      return { cases: cases.items, events: events.items, hotspots: analytics.hotspots, source: "api", cached_at: new Date().toISOString() };
+    } else {
+      return { cases: [...demoCases, ...demoExtraCases], events: demoEvents, hotspots: demoHotspots, source: "demo-fixture", cached_at: new Date().toISOString() };
+    }
   } catch {
     if (demoMode) return { cases: [...demoCases, ...demoExtraCases], events: demoEvents, hotspots: demoHotspots, source: "demo-fixture", cached_at: new Date().toISOString() };
     throw new Error("The district queue is unavailable. Check the backend connection and try again.");

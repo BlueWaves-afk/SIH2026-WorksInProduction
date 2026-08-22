@@ -130,7 +130,7 @@ export function OfficerWorkspace({
   );
   const filtered = useMemo(() => cases.filter((c) => {
     const complaint = complaintByCase.get(c.case_id);
-    const haystack = `${c.village_id} ${complaint?.farmer_label ?? ""} ${complaint ? INTENT_LABEL[complaint.intent] : ""}`.toLowerCase();
+    const haystack = `${c.case_id} ${c.village_id} ${complaint?.farmer_label ?? ""} ${complaint ? INTENT_LABEL[complaint.intent] : ""}`.toLowerCase();
     if (!haystack.includes(query.toLowerCase())) return false;
     if (pinnedOnly && !pinned.has(c.case_id)) return false;
     if (statusFilter === "open") return c.status !== "resolved";
@@ -426,53 +426,57 @@ export function OfficerWorkspace({
                   )}
 
                   <div className="ow-analysis-body">
-                    <ul className="ow-case-list">
-                      {cases.slice(0, 3).map((c) => {
-                        const ev = eventById.get(c.event_id);
-                        return (
-                          <li key={c.case_id}>
-                            <button onClick={() => { onSelect(c.case_id); setCompareId(c.case_id); }}>
-                              <ChevronRight size={14} strokeWidth={2.4} />
-                              <span>
-                                <strong>{c.village_id.split(" / ").pop()} ({c.case_id.replace("case-", "#")})</strong>
-                                <small>{ev?.contributors[0]?.explanation ?? "Awaiting signals."}</small>
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    <div className="ow-compare">
-                      <div className="ow-compare-head">
-                        <span>Compare</span>
-                        <div className="ow-compare-tabs">
-                          {cases.slice(0, 3).map((c) => (
-                            <button key={c.case_id} className={c.case_id === compareId ? "is-active" : ""} onClick={() => setCompareId(c.case_id)}>
-                              {c.village_id.split(" / ").pop()}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <ul className="ow-legend">
-                        {SIGNAL_FAMILIES.map((f) => <li key={f.key}><i className={`tone-${f.tone}`} />{f.label}</li>)}
+                    {tab === "describe" && (
+                      <ul className="ow-case-list">
+                        {cases.slice(0, 3).map((c) => {
+                          const ev = eventById.get(c.event_id);
+                          return (
+                            <li key={c.case_id}>
+                              <button onClick={() => { onSelect(c.case_id); setCompareId(c.case_id); }}>
+                                <ChevronRight size={14} strokeWidth={2.4} />
+                                <span>
+                                  <strong>{c.village_id.split(" / ").pop()} ({c.case_id.replace("case-", "#")})</strong>
+                                  <small>{ev?.contributors[0]?.explanation ?? "Awaiting signals."}</small>
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
                       </ul>
-                      <div className="ow-chart" role="img" aria-label="Signal contribution by family">
-                        <div className="ow-chart-axis"><span>20</span><span>15</span><span>10</span><span>5</span><span>0</span></div>
-                        <div className="ow-chart-bars">
-                          {SIGNAL_FAMILIES.map((f) => {
-                            const v = compareEvent ? familyValue(compareEvent, f.match) : { points: 0, max: 20 };
-                            const pct = Math.max(6, Math.round((v.points / v.max) * 100));
-                            return (
-                              <div className="ow-bar" key={f.key}>
-                                <span className="ow-bar-track" />
-                                <span className={`ow-bar-fill tone-${f.tone}`} style={{ height: `${pct}%` }}><i /></span>
-                              </div>
-                            );
-                          })}
+                    )}
+
+                    {tab === "compare" && (
+                      <div className="ow-compare">
+                        <div className="ow-compare-head">
+                          <span>Compare</span>
+                          <div className="ow-compare-tabs">
+                            {cases.slice(0, 3).map((c) => (
+                              <button key={c.case_id} className={c.case_id === compareId ? "is-active" : ""} onClick={() => setCompareId(c.case_id)}>
+                                {c.village_id.split(" / ").pop()}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <ul className="ow-legend">
+                          {SIGNAL_FAMILIES.map((f) => <li key={f.key}><i className={`tone-${f.tone}`} />{f.label}</li>)}
+                        </ul>
+                        <div className="ow-chart" role="img" aria-label="Signal contribution by family">
+                          <div className="ow-chart-axis"><span>20</span><span>15</span><span>10</span><span>5</span><span>0</span></div>
+                          <div className="ow-chart-bars">
+                            {SIGNAL_FAMILIES.map((f) => {
+                              const v = compareEvent ? familyValue(compareEvent, f.match) : { points: 0, max: 20 };
+                              const pct = Math.max(6, Math.round((v.points / v.max) * 100));
+                              return (
+                                <div className="ow-bar" key={f.key}>
+                                  <span className="ow-bar-track" />
+                                  <span className={`ow-bar-fill tone-${f.tone}`} style={{ height: `${pct}%` }}><i /></span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </>
               )}

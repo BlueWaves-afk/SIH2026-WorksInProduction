@@ -193,11 +193,11 @@ export function ShieldMarketScreen({ mandis, onBack }: { mandis: MandiQuote[]; o
   ];
   return (
     <div className="shield-screen">
-      <InnerHeader title="Nearby markets" subtitle="Compare before selling" onBack={onBack} />
+      <InnerHeader title={t("menu.markets")} subtitle={t("menu.markets.sub")} onBack={onBack} />
       <label className="shield-search"><Search size={18} /><input aria-label="Search markets" placeholder={t("copilot.search")} /><button aria-label="Market filters">⌁</button></label>
       <GeoMap points={mapPoints} center={[73.84, 20.22]} zoom={9} styleUrl={import.meta.env.VITE_MAP_STYLE_URL as string | undefined} label="Nearby public markets" privacyNote="Approximate farmer area" />
       <section className="shield-market-list">
-        <div className="shield-section-heading"><div><span>PRICE OPTIONS</span><h2>Markets near you</h2></div><b>Today</b></div>
+        <div className="shield-section-heading"><div><span>{t("markets.priceOptions")}</span><h2>{t("markets.nearYou")}</h2></div><b>Today</b></div>
         {mandis.map((mandi, index) => (
           <article key={mandi.mandi} className={`shield-market-row ${index === 1 ? "best" : ""}`}>
             <span className="shield-market-rank">{index === 1 ? <ShieldCheck size={18} /> : index + 1}</span>
@@ -206,7 +206,7 @@ export function ShieldMarketScreen({ mandis, onBack }: { mandis: MandiQuote[]; o
           </article>
         ))}
       </section>
-      <div className="shield-safety-note"><IndianRupee size={18} /><span><strong>Compare, then confirm</strong><small>Your FPO or officer confirms availability and grade before you travel.</small></span></div>
+      <div className="shield-safety-note"><IndianRupee size={18} /><span><strong>{t("markets.compare")}</strong><small>{t("markets.compareSub")}</small></span></div>
     </div>
   );
 }
@@ -353,16 +353,17 @@ export function ShieldCopilotScreen({ messages, thinking = false, input, placeho
 }
 
 export function ShieldPrivacyScreen({ consent, privacyText, onUpdate, onReviewSetup, onBack }: { consent: ConsentState; privacyText: string; onUpdate: (key: keyof ConsentState, value: boolean) => void; onReviewSetup: () => void; onBack: () => void }) {
+  const t = useT();
   return (
     <div className="shield-screen">
-      <InnerHeader title="Privacy & consent" subtitle="Your choices stay editable" onBack={onBack} />
+      <InnerHeader title={t("menu.privacy")} subtitle={t("menu.privacy.subtitle")} onBack={onBack} />
       <section className="shield-privacy-hero"><span><LockKeyhole size={25} /></span><h1>Your information, your choice</h1><p>{privacyText}</p></section>
       <section className="shield-consent-card">
-        <ConsentToggle label="Save my support information" description="Needed to show your status again." value={consent.storage} onChange={(value) => onUpdate("storage", value)} />
-        <ConsentToggle label="Allow officer contact" description="Lets an extension officer call or refer your case." value={consent.contact} onChange={(value) => onUpdate("contact", value)} />
-        <ConsentToggle label="Email me alerts" description="Also send urgent alerts to your email. Set your address during setup." value={consent.email_alerts} onChange={(value) => onUpdate("email_alerts", value)} />
-        <ConsentToggle label="Include me in anonymous trends" description="Only group results are used." value={consent.analytics} onChange={(value) => onUpdate("analytics", value)} />
-        <ConsentToggle label="Share a coarse repayment window" description="Timing only; no account or lender data." value={consent.due_window} onChange={(value) => onUpdate("due_window", value)} />
+        <ConsentToggle label={t("onboarding.privacy.storage")} description={t("onboarding.privacy.storageBody")} value={consent.storage} onChange={(value) => onUpdate("storage", value)} />
+        <ConsentToggle label={t("onboarding.privacy.contact")} description={t("onboarding.privacy.contactBody")} value={consent.contact} onChange={(value) => onUpdate("contact", value)} />
+        <ConsentToggle label={t("onboarding.privacy.email")} description={t("onboarding.privacy.emailBody")} value={consent.email_alerts} onChange={(value) => onUpdate("email_alerts", value)} />
+        <ConsentToggle label={t("onboarding.privacy.analytics")} description={t("onboarding.privacy.analyticsBody")} value={consent.analytics} onChange={(value) => onUpdate("analytics", value)} />
+        <ConsentToggle label={t("onboarding.support.dueTitle")} description={t("onboarding.support.dueBody")} value={consent.due_window} onChange={(value) => onUpdate("due_window", value)} />
       </section>
       <button className="shield-secondary-cta" onClick={onReviewSetup}>Review my setup <ChevronRight size={18} /></button>
     </div>
@@ -370,20 +371,21 @@ export function ShieldPrivacyScreen({ consent, privacyText, onUpdate, onReviewSe
 }
 
 export function ShieldMoreScreen({ locale, localeName, onLocale, onMarkets, onPrivacy, onAsk }: { locale: string; localeName: string; onLocale: (locale: "en" | "hi" | "mr") => void; onMarkets: () => void; onPrivacy: () => void; onAsk: () => void }) {
+  const t = useT();
   return (
     <div className="shield-screen">
       <section className="shield-profile-hero">
         <span className="shield-profile-avatar"><UserRound size={35} /></span>
-        <h1>Your support space</h1><p>Dindori · Cotton · Kharif</p>
-        <div><span><b>74</b><small>Support score</small></span><i /><span><b>86%</b><small>Confidence</small></span></div>
+        <h1>{t("profile.title")}</h1><p>Dindori · Cotton · Kharif</p>
+        <div><span><b>74</b><small>{t("profile.score")}</small></span><i /><span><b>86%</b><small>{t("profile.confidence")}</small></span></div>
       </section>
       <section className="shield-menu-card">
-        <button onClick={onMarkets}><span><Store size={19} /></span><span><strong>Nearby markets</strong><small>Compare today’s options</small></span><ChevronRight size={18} /></button>
-        <button onClick={onAsk}><span><Headphones size={19} /></span><span><strong>Support copilot</strong><small>Ask about your status</small></span><ChevronRight size={18} /></button>
-        <button onClick={onPrivacy}><span><LockKeyhole size={19} /></span><span><strong>Privacy & consent</strong><small>Control how information is used</small></span><ChevronRight size={18} /></button>
+        <button onClick={onMarkets}><span><Store size={19} /></span><span><strong>{t("menu.markets")}</strong><small>{t("menu.markets.sub2")}</small></span><ChevronRight size={18} /></button>
+        <button onClick={onAsk}><span><Headphones size={19} /></span><span><strong>{t("menu.copilot")}</strong><small>{t("menu.copilot.sub")}</small></span><ChevronRight size={18} /></button>
+        <button onClick={onPrivacy}><span><LockKeyhole size={19} /></span><span><strong>{t("menu.privacy")}</strong><small>{t("menu.privacy.sub")}</small></span><ChevronRight size={18} /></button>
       </section>
-      <label className="shield-language-row"><span><Languages size={19} /></span><span><strong>App language</strong><small>{localeName}</small></span><select aria-label="App language" value={locale} onChange={(event) => onLocale(event.target.value as "en" | "hi" | "mr")}><option value="mr">मराठी</option><option value="hi">हिंदी</option><option value="en">English</option></select></label>
-      <div className="shield-safety-note"><ShieldCheck size={18} /><span><strong>KisanSetu support network</strong><small>Your score is for support prioritisation, never for credit or insurance decisions.</small></span></div>
+      <label className="shield-language-row"><span><Languages size={19} /></span><span><strong>{t("language.select")}</strong><small>{localeName}</small></span><select aria-label="App language" value={locale} onChange={(event) => onLocale(event.target.value as "en" | "hi" | "mr")}><option value="mr">ਪੰਜਾਬੀ</option><option value="hi">हिंदी</option><option value="en">English</option></select></label>
+      <div className="shield-safety-note"><ShieldCheck size={18} /><span><strong>{t("support.network")}</strong><small>{t("support.networkSub")}</small></span></div>
     </div>
   );
 }

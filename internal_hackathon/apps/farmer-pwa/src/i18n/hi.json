@@ -1,13 +1,11 @@
 {
   "app.name": "किसानसेतु",
   "app.tagline": "देशभर सहायता",
-
   "nav.home": "होम",
   "nav.status": "स्थिति",
   "nav.ask": "पूछें",
   "nav.more": "और",
   "language.select": "ऐप की भाषा",
-
   "home.headline": "आस-पास क्या हो रहा है,",
   "home.headline.accent": "फसल सहायता समय पर पाएं",
   "home.live.title": "कपास सहायता चेतावनी-",
@@ -19,11 +17,9 @@
   "home.plan.sub": "3 सुरक्षित, जांचे गए कदम",
   "home.updated": "अभी अपडेट किया गया",
   "home.offline": "अंतिम सहेजी गई स्थिति",
-
   "band.green": "सब ठीक है",
   "band.amber": "ध्यान रखें",
   "band.red": "सहायता चाहिए",
-
   "filter.all": "सभी चेतावनी",
   "filter.weather": "मौसम",
   "filter.crop": "फसल स्वास्थ्य",
@@ -32,14 +28,12 @@
   "filter.pest": "कीट चेतावनी",
   "filter.scheme": "योजना",
   "filter.advisory": "सलाह",
-
   "alerts.headline": "आपके क्षेत्र में क्या हो रहा है —",
   "alerts.headline.accent": "लाइव चेतावनी, खेत रिपोर्ट और सहायता अपडेट",
   "alerts.kind.crop": "फसल स्वास्थ्य",
   "alerts.kind.rain": "मौसम",
   "alerts.kind.market": "बाजार",
   "alerts.kind.pest": "कीट",
-
   "timeline.back": "वापस",
   "timeline.heading": "समयरेखा अपडेट",
   "timeline.summary": "{village} में आपके कपास के खेत के लिए सहायता दर्ज की गई है। कृषि अधिकारी को सूचित कर दिया गया है और आपका मामला निपटारे तक देखा जा रहा है।",
@@ -47,7 +41,6 @@
   "timeline.farmer": "आपने कपास के खेत में पानी की कमी बताई।",
   "timeline.safety.title": "केवल सहायता संकेत",
   "timeline.chat": "अपने सहायक से बात करें",
-
   "copilot.search": "इस क्षेत्र में खोजें",
   "copilot.heading": "सहायता कोपायलट",
   "copilot.sub": "अपनी स्थिति का सरल कारण जानें या अपने खेत के लिए अगला सुरक्षित कदम खोजें।",
@@ -62,7 +55,6 @@
   "copilot.urgent": "क्या यह जरूरी है?",
   "copilot.callOfficer": "अधिकारी को बुलाएं",
   "copilot.placeholder": "सवाल पूछें…",
-
   "onboarding.step": "{current}/{total}",
   "onboarding.continue": "आगे बढ़ें",
   "onboarding.finish": "सेटअप पूरा करें",
@@ -105,7 +97,6 @@
   "onboarding.privacy.analytics": "मुझे गुमनाम आंकड़ों में शामिल करें",
   "onboarding.privacy.analyticsBody": "केवल गांव-स्तर के सामूहिक परिणाम उपयोग होते हैं।",
   "onboarding.privacy.required": "स्थिति दिखाने के लिए जानकारी सहेजना जरूरी है।",
-
   "crop.cotton": "कपास",
   "crop.soybean": "सोयाबीन",
   "crop.groundnut": "मूंगफली",
@@ -116,5 +107,22 @@
   "irrigation.rainfed": "बारिश पर निर्भर",
   "irrigation.partial": "आंशिक",
   "irrigation.assured": "निश्चित",
-  "scheme.none": "अभी कोई नहीं"
+  "scheme.none": "अभी कोई नहीं",
+  "menu.markets": "आसपास की मंडियां",
+  "menu.markets.sub": "बेचने से पहले तुलना करें",
+  "menu.markets.sub2": "आज के विकल्पों की तुलना करें",
+  "menu.copilot": "सपोर्ट कोपायलट",
+  "menu.copilot.sub": "अपनी स्थिति के बारे में पूछें",
+  "menu.privacy": "गोपनीयता और सहमति",
+  "menu.privacy.sub": "नियंत्रित करें कि जानकारी का उपयोग कैसे किया जाता है",
+  "menu.privacy.subtitle": "आपकी पसंद संपादन योग्य रहती है",
+  "profile.title": "आपका सपोर्ट स्पेस",
+  "profile.score": "सपोर्ट स्कोर",
+  "profile.confidence": "विश्वास",
+  "markets.priceOptions": "मूल्य विकल्प",
+  "markets.nearYou": "आपके पास की मंडियां",
+  "markets.compare": "तुलना करें, फिर पुष्टि करें",
+  "markets.compareSub": "आपका एफपीओ या अधिकारी यात्रा करने से पहले पुष्टि करता है।",
+  "support.network": "किसानसेतु सपोर्ट नेटवर्क",
+  "support.networkSub": "आपका स्कोर सहायता के लिए है, ऋण या बीमा के लिए नहीं।"
 }

@@ -8,7 +8,7 @@ export type Locale = "en" | "hi" | "mr";
 type Dict = Record<string, string>;
 const DICTS: Record<Locale, Dict> = { en, hi, mr };
 
-export const LOCALE_NAMES: Record<Locale, string> = { en: "English", hi: "हिंदी", mr: "मराठी" };
+export const LOCALE_NAMES: Record<Locale, string> = { en: "English", hi: "हिंदी", mr: "ਪੰਜਾਬੀ" };
 
 const LocaleContext = createContext<Locale>("en");
 

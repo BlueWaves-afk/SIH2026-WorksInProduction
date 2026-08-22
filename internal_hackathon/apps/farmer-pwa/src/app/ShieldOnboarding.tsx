@@ -36,7 +36,7 @@ export interface OnboardingResult {
 }
 
 const LANGUAGES: Array<{ value: Locale; label: string; native: string; glyph: string }> = [
-  { value: "mr", label: "Marathi", native: "मराठी", glyph: "अ" },
+  { value: "mr", label: "Punjabi", native: "ਪੰਜਾਬੀ", glyph: "ਪ" },
   { value: "hi", label: "Hindi", native: "हिंदी", glyph: "आ" },
   { value: "en", label: "English", native: "English", glyph: "A" },
 ];
