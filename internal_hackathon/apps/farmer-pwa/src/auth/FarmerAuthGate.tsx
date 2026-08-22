@@ -41,23 +41,39 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
     return () => { active = false; unsubscribe(); };
   }, []);
 
+  if (!authRequired) return children;
+  if (loading) return <AuthFrame><p className="auth-kicker">SECURE FARMER ACCESS</p><h1>Restoring your private session…</h1></AuthFrame>;
   if (session) {
+    // Only app_metadata is trusted for elevation; user_metadata is editable by
+    // the end user and must never grant officer access.
     const role = String(session.user.app_metadata?.role ?? "").toLowerCase();
     return OFFICER_ROLES.has(role) ? <OfficerDashboard /> : children;
   }
+  if (!supabase) return <AuthFrame><p className="auth-kicker">SETUP REQUIRED</p><h1>Farmer sign-in is not configured.</h1><p>Add the public Supabase URL and anonymous key to the Vercel environment.</p></AuthFrame>;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
-      // TOY LOGIC BYPASS
+      if (method === "email" && emailConfirmation) {
+        await resendSignupConfirmation(email.trim());
+        setEmailConfirmation(true);
+        return;
+      }
+      setEmailConfirmation(false);
       if (method === "email") {
-         setSession({ user: { id: "fake-farmer-id", app_metadata: { role: "farmer" } } } as any);
+        if (emailMode === "signup") {
+          const result = await signUpWithEmail(email.trim(), password);
+          setEmailConfirmation(!result.session);
+        } else {
+          await signInWithEmail(email.trim(), password);
+        }
       } else if (stage === "phone") {
-         setStage("otp");
+        await sendPhoneOtp(phone.trim());
+        setStage("otp");
       } else {
-         setSession({ user: { id: "fake-farmer-id", app_metadata: { role: "farmer" } } } as any);
+        await verifyPhoneOtp(phone.trim(), otp.trim());
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Sign-in failed. Please try again.");
@@ -83,7 +99,7 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
         </button>
       </div>
       <AnimatePresence mode="wait" initial={false}>
-        {portal === "officer" ? <motion.div key="officer" {...(reduceMotion ? reducedPanelMotion : panelMotion)}><OfficerAccessPanel setSession={setSession} /></motion.div> : (
+        {portal === "officer" ? <motion.div key="officer" {...(reduceMotion ? reducedPanelMotion : panelMotion)}><OfficerAccessPanel /></motion.div> : (
         <motion.div key="farmer" {...(reduceMotion ? reducedPanelMotion : panelMotion)}>
           <h1>{method === "email" ? (emailMode === "signup" ? "Create your farmer account" : "Open your KisanSetu support") : stage === "phone" ? "Open your KisanSetu support" : "Enter the 6-digit code"}</h1>
           <p>{emailConfirmation ? "Check your email to confirm your account, then return here to sign in." : method === "email" ? "Email works as a demo fallback while phone OTP is being connected." : stage === "phone" ? "Use the mobile number registered for your support profile." : `We sent a one-time code to ${phone}.`}</p>
@@ -115,7 +131,7 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
   );
 }
 
-function OfficerAccessPanel({ setSession }: { setSession: any }) {
+function OfficerAccessPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -126,8 +142,14 @@ function OfficerAccessPanel({ setSession }: { setSession: any }) {
     setSubmitting(true);
     setError(null);
     try {
-      // TOY LOGIC BYPASS
-      setSession({ user: { id: "fake-officer", app_metadata: { role: "extension_officer" } } } as any);
+      const signedIn = await signInWithEmail(email.trim(), password);
+      const role = String(signedIn?.user.app_metadata?.role ?? "");
+      if (!OFFICER_ROLES.has(role)) {
+        await signOut();
+        throw new Error("This account has not been assigned an officer role.");
+      }
+      // The officer workspace is part of this same Vercel build. The role-aware
+      // session branch above renders it without a second deployment or redirect.
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Officer sign-in failed. Please try again.");
     } finally {
