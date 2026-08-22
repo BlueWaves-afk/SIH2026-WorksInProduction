@@ -1,0 +1,8 @@
+flowchart TB
+  browser["Browser\npublic Supabase URL + anon key only"] --> jwt["Supabase Auth JWT"]
+  jwt --> claims["app_metadata.role + district_id"]
+  claims --> guards["RBAC + ownership + consent guards"]
+  guards --> sensitive["Farmer · risk · case APIs"]
+  sensitive --> audit["Audit events + request IDs"]
+  secrets["Render secret store\nDB URL · service key · vault key · provider keys"] --> backend["Backend / worker"]
+  backend --> db[("Postgres + vault fields")]

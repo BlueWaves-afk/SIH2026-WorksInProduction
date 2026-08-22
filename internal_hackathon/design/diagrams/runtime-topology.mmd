@@ -1,0 +1,13 @@
+flowchart LR
+  farmer["Farmer PWA"] --> vercel["Vercel\nrole-aware frontend"]
+  officer["Officer workspace"] --> vercel
+  vercel -->|"Bearer Supabase JWT"| api["services/backend\nFastAPI composition root"]
+  api --> auth["Auth + consent + audit"]
+  api --> orchestration["Workflow orchestration"]
+  orchestration --> adapters["libs/adapters\nmock · real · replay"]
+  orchestration --> scorer["services/scoring-engine\npure FDI v2"]
+  orchestration --> copilot["services/ai-copilot\ncited + guarded"]
+  api --> db[("Supabase Postgres\nPostGIS + Alembic")]
+  worker["Render worker\npython -m app.worker"] --> api
+  worker --> db
+  api --> providers["Sarvam · WhatsApp · SMTP\nserver-side only"]

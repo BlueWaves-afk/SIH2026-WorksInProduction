@@ -1,0 +1,9 @@
+flowchart LR
+  gh["GitHub main"] --> vercel["Vercel\nfarmer + officer static apps"]
+  gh --> renderweb["Render web\nDocker FastAPI"]
+  gh --> renderworker["Render worker\nscheduler"]
+  renderweb --> supa["Supabase\nAuth + Postgres/PostGIS"]
+  renderworker --> supa
+  renderweb --> sarvam["Sarvam"]
+  renderweb --> meta["WhatsApp Cloud / approved call provider"]
+  renderworker --> smtp["SMTP digest"]

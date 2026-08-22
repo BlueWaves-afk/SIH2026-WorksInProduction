@@ -1,0 +1,11 @@
+flowchart LR
+  sources["IMD · Agmarknet · Sentinel-2 · MSP · soil\nfarmer reports / due window"] --> adapters["Canonical adapters\nquality · TTL · provenance"]
+  adapters --> observations["Observation store"]
+  observations --> score["FDI v2 scorer"]
+  score --> event["RiskEvent\nscore · band · confidence · expiry"]
+  event --> workflow["Deduplication + hysteresis\ncase workflow"]
+  workflow --> case["AlertCase\nnew → acknowledged → visited/referred → resolved"]
+  workflow --> outbox["Outbox / outreach policy"]
+  outbox --> farmer["Farmer PWA · approved channels"]
+  case --> officer["Officer queue + district analytics"]
+  event --> copilot["Sarvam/template copilot\nread-only draft + citations"]
