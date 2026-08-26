@@ -29,10 +29,12 @@ import {
   ClipboardList,
   GitCompare,
   LayoutList,
+  LogOut,
 } from "lucide-react";
 import { GeoMap, type AlertCase, type CopilotBrief, type RiskEvent } from "ui-kit";
 import type { DistrictHotspot } from "../api/client";
 import { CHANNEL_LABEL, INTENT_LABEL, RESOLUTION_LABEL, demoComplaints, type ComplaintIntent } from "../demo";
+import { signOut } from "../auth/supabase";
 
 type AnalysisTab = "summarize" | "compare" | "describe";
 type StatusFilter = "open" | "new" | "breach" | "all";
@@ -260,6 +262,14 @@ export function OfficerWorkspace({
             onClick={() => { setQueueOpen(true); setStatusFilter("breach"); }}
           >
             <Bell size={18} strokeWidth={1.9} /><span className="ow-rail-label">SLA breaches</span>
+          </button>
+          <button
+            className="ow-rail-btn ow-signout"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={() => void signOut()}
+          >
+            <LogOut size={18} strokeWidth={1.9} /><span className="ow-rail-label">Sign out</span>
           </button>
           <span className="ow-avatar" aria-label="Officer Asha" />
         </div>

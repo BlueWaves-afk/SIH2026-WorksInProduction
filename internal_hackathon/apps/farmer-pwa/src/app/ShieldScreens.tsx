@@ -14,6 +14,7 @@ import {
   IndianRupee,
   Languages,
   LockKeyhole,
+  LogOut,
   MapPin,
   MessageCircle,
   Mic,
@@ -370,7 +371,7 @@ export function ShieldPrivacyScreen({ consent, privacyText, onUpdate, onReviewSe
   );
 }
 
-export function ShieldMoreScreen({ locale, localeName, onLocale, onMarkets, onPrivacy, onAsk }: { locale: string; localeName: string; onLocale: (locale: "en" | "hi" | "mr") => void; onMarkets: () => void; onPrivacy: () => void; onAsk: () => void }) {
+export function ShieldMoreScreen({ locale, localeName, onLocale, onMarkets, onPrivacy, onAsk, onSignOut }: { locale: string; localeName: string; onLocale: (locale: "en" | "hi" | "mr") => void; onMarkets: () => void; onPrivacy: () => void; onAsk: () => void; onSignOut: () => void }) {
   const t = useT();
   return (
     <div className="shield-screen">
@@ -386,6 +387,7 @@ export function ShieldMoreScreen({ locale, localeName, onLocale, onMarkets, onPr
       </section>
       <label className="shield-language-row"><span><Languages size={19} /></span><span><strong>{t("language.select")}</strong><small>{localeName}</small></span><select aria-label="App language" value={locale} onChange={(event) => onLocale(event.target.value as "en" | "hi" | "mr")}><option value="mr">ਪੰਜਾਬੀ</option><option value="hi">हिंदी</option><option value="en">English</option></select></label>
       <div className="shield-safety-note"><ShieldCheck size={18} /><span><strong>{t("support.network")}</strong><small>{t("support.networkSub")}</small></span></div>
+      <button className="shield-secondary-cta" onClick={onSignOut}><LogOut size={18} /> Sign out</button>
     </div>
   );
 }

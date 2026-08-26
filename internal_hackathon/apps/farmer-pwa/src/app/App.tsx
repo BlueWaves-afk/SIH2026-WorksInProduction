@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { type ConsentState, type CopilotMessage } from "ui-kit";
 import "ui-kit/styles.css";
 import { loadFarmerStatus, sendCopilotMessage, submitFarmerProfile, synthesizeSpeech, transcribeSpeech, type FarmerStatus } from "../api/client";
-import { demoMode } from "../auth/supabase";
+import { demoMode, signOut } from "../auth/supabase";
 import { describeAge } from "../features/offline/statusCache";
 import { demoActionCard, demoMandis, demoRiskEvent } from "../demo";
 import { buildAlerts } from "../features/alerts/fromStatus";
@@ -403,7 +403,7 @@ export function App() {
       {screen === "mandi" && <ShieldMarketScreen mandis={status.mandis} onBack={() => navigate("home")} />}
       {screen === "copilot" && <ShieldCopilotScreen messages={messages} thinking={thinking} input={copilotInput} placeholder={tr("copilot.placeholder")} sendLabel={t.send} onInput={setCopilotInput} onReply={replyTo} onBack={() => navigate("home")} voiceState={voiceState} voiceError={voiceError} voiceStatus={voiceStatus} onToggleRecording={() => void toggleVoiceCapture()} onPlayAnswer={() => void playLastAnswer()} />}
       {screen === "settings" && <ShieldPrivacyScreen consent={consent} privacyText={t.privacy} onUpdate={(key, value) => updateConsent(key)(value)} onReviewSetup={() => { window.localStorage.removeItem("farmer-onboarded"); setOnboarded(false); }} onBack={() => navigate("more")} />}
-      {screen === "more" && <ShieldMoreScreen locale={locale} localeName={t.name} onLocale={setLocale} onMarkets={() => navigate("mandi")} onPrivacy={() => navigate("settings")} onAsk={() => navigate("copilot")} />}
+      {screen === "more" && <ShieldMoreScreen locale={locale} localeName={t.name} onLocale={setLocale} onMarkets={() => navigate("mandi")} onPrivacy={() => navigate("settings")} onAsk={() => navigate("copilot")} onSignOut={() => void signOut()} />}
       </div>
       {/* Detail screens carry their own bottom bar, so the dock steps aside. */}
       {!DOCKLESS_SCREENS.has(screen) && <ShieldDock screen={screen} labels={{ home: tr("nav.home"), status: tr("nav.status"), ask: tr("nav.ask"), more: tr("nav.more") }} onNavigate={navigate} />}
