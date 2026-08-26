@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowRight, BriefcaseBusiness, LockKeyhole, Mail, Phone } from "lucide-react";
 import { App as OfficerDashboard } from "../../../officer-dashboard/src/app/App";
-import { authRequired, currentSession, observeSession, resendSignupConfirmation, sendPhoneOtp, signInWithEmail, signOut, signUpWithEmail, supabase, verifyPhoneOtp } from "./supabase";
+import { AuthFlowError, authRequired, currentSession, friendlyAuthError, observeSession, resendSignupConfirmation, sendPhoneOtp, signInWithEmail, signOut, signUpWithEmail, supabase, verifyPhoneOtp } from "./supabase";
 
 const OFFICER_ROLES = new Set(["extension_officer", "district_admin", "admin", "auditor"]);
 
@@ -65,18 +65,26 @@ export function FarmerAuthGate({ children }: { children: ReactNode }) {
       if (method === "email") {
         if (emailMode === "signup") {
           const result = await signUpWithEmail(email.trim(), password);
+          if (result.session) setSession(result.session);
           setEmailConfirmation(!result.session);
         } else {
-          await signInWithEmail(email.trim(), password);
+          const signedIn = await signInWithEmail(email.trim(), password);
+          if (signedIn) setSession(signedIn);
         }
       } else if (stage === "phone") {
         await sendPhoneOtp(phone.trim());
         setStage("otp");
       } else {
-        await verifyPhoneOtp(phone.trim(), otp.trim());
+        const verified = await verifyPhoneOtp(phone.trim(), otp.trim());
+        if (verified) setSession(verified);
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Sign-in failed. Please try again.");
+      if (reason instanceof AuthFlowError && reason.code === "account_exists") {
+        setEmailMode("signin");
+        setEmailConfirmation(false);
+      }
+      const action = method === "email" ? (emailMode === "signup" ? "signup" : "signin") : stage === "phone" ? "otp" : "signin";
+      setError(friendlyAuthError(reason, action));
     } finally {
       setSubmitting(false);
     }

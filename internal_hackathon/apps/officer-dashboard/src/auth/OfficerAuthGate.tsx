@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
-import { authRequired, currentSession, observeSession, signIn, signOut, supabase } from "./supabase";
+import { authRequired, currentSession, friendlyAuthError, observeSession, signIn, signOut, supabase } from "./supabase";
 
 const OFFICER_ROLES = new Set(["extension_officer", "district_admin", "admin", "auditor"]);
 
@@ -46,7 +46,7 @@ export function OfficerAuthGate({ children }: { children: ReactNode }) {
         setError("This account has not been assigned an officer role.");
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Sign-in failed. Please try again.");
+      setError(friendlyAuthError(reason));
     } finally {
       setSubmitting(false);
     }

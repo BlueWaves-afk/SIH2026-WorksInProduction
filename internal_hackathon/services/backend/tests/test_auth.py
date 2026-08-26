@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from jose import jwt
 
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.security.auth import _claim_district, _claim_role, _decode_supabase_token
 
 
@@ -19,6 +19,12 @@ def test_district_is_read_from_server_controlled_metadata() -> None:
     assert _claim_district({"app_metadata": {"district_id": "nashik"}}) == "nashik"
     assert _claim_district({"district_id": "pune", "app_metadata": {"district_id": "nashik"}}) == "pune"
     assert _claim_district({"user_metadata": {"district_id": "attacker-choice"}}) is None
+
+
+def test_supabase_project_url_accepts_rest_or_auth_suffix() -> None:
+    assert Settings(supabase_url="https://project.supabase.co/rest/v1/").supabase_url == "https://project.supabase.co"
+    assert Settings(supabase_url="https://project.supabase.co/auth/v1").supabase_url == "https://project.supabase.co"
+    assert Settings(supabase_url="https://project.supabase.co").supabase_url == "https://project.supabase.co"
 
 
 def test_legacy_signed_token_is_verified_with_issuer_and_safe_role(monkeypatch) -> None:

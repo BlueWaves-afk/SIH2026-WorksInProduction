@@ -8,9 +8,10 @@ provider; SQLite is available only as a local, dependency-free fallback.
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -135,6 +136,23 @@ class Settings(BaseSettings):
     district_digest_enabled: bool = True
     district_digest_hour: int = Field(default=6, ge=0, le=23)
     district_digest_recipients: str = ""
+
+    @field_validator("supabase_url", mode="before")
+    @classmethod
+    def normalize_supabase_project_url(cls, value: object) -> object:
+        """Accept a project URL even when a REST/Auth suffix was pasted.
+
+        Supabase exposes a REST URL ending in ``/rest/v1`` in its dashboard,
+        while Auth and JWKS live at the project root. Keeping the normalisation
+        at the settings boundary prevents malformed ``/rest/v1/auth/v1`` URLs
+        in both JWT verification and health checks.
+        """
+        if not isinstance(value, str):
+            return value
+        cleaned = value.strip().rstrip("/")
+        if not cleaned:
+            return None
+        return re.sub(r"/(?:rest/v1|auth/v1)$", "", cleaned, flags=re.IGNORECASE)
 
     model_config = SettingsConfigDict(
         env_file=(".env.local", ".env"),
